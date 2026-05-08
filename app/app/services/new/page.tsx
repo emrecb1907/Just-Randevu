@@ -16,22 +16,22 @@ export default async function NewServicePage() {
           Hizmet Tanımla
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Süre ve fiyat yeni randevulara snapshot olarak aktarılır.
+          Bu süre ve fiyat yeni randevularda kullanılır.
         </p>
       </div>
       <form
         action={createServiceAction}
-        className="grid gap-4 rounded-lg border border-border bg-surface p-4 md:grid-cols-2"
+        className="grid gap-4 rounded-[24px] border border-border bg-surface p-5 shadow-panel md:grid-cols-2"
       >
         <input type="hidden" name="businessId" value={business.id} />
         <input type="hidden" name="isActive" value="true" />
         <label className="text-sm font-medium">
-          İşlem adı
+          Hizmet adı
           <input
             name="name"
             required
             minLength={2}
-            className="mt-2 min-h-11 w-full rounded-md border border-border bg-background px-3"
+            className="mt-2 min-h-11 w-full rounded-xl border border-border bg-background px-3"
             placeholder="Hizmet adı"
           />
         </label>
@@ -41,7 +41,7 @@ export default async function NewServicePage() {
             name="category"
             required
             minLength={2}
-            className="mt-2 min-h-11 w-full rounded-md border border-border bg-background px-3"
+            className="mt-2 min-h-11 w-full rounded-xl border border-border bg-background px-3"
             placeholder="Kategori"
           />
         </label>
@@ -49,7 +49,7 @@ export default async function NewServicePage() {
           Süre
           <select
             name="durationMinutes"
-            className="mt-2 min-h-11 w-full rounded-md border border-border bg-background px-3"
+            className="mt-2 min-h-11 w-full rounded-xl border border-border bg-background px-3"
             defaultValue="30"
           >
             {[15, 20, 30, 40, 60, 90, 120].map((duration) => (
@@ -65,20 +65,20 @@ export default async function NewServicePage() {
             name="defaultPriceCents"
             required
             inputMode="decimal"
-            className="mt-2 min-h-11 w-full rounded-md border border-border bg-background px-3"
+            className="mt-2 min-h-11 w-full rounded-xl border border-border bg-background px-3"
             placeholder="650"
           />
         </label>
         <div className="flex items-end justify-end gap-2 md:col-span-2">
           <Link
             href="/app/services"
-            className="inline-flex min-h-11 items-center rounded-md border border-border bg-background px-4 text-sm font-semibold"
+            className="inline-flex min-h-11 items-center rounded-xl border border-border bg-background px-4 text-sm font-semibold"
           >
             Vazgeç
           </Link>
           <ConfirmSubmitButton
             title="Hizmet kaydedilsin mi?"
-            description="Bu fiyat yeni randevulara snapshot olarak yazılır; eski randevu gelirleri değişmez."
+            description="Bu fiyat yeni randevularda kullanılır. Eski randevu gelirleri değişmez."
           >
             Hizmet ekle
           </ConfirmSubmitButton>

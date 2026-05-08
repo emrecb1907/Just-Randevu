@@ -36,22 +36,22 @@ export default async function EditStockPage({ params }: EditStockPageProps) {
           Stok miktarı hareketlerden hesaplanır; burada kart bilgileri değişir.
         </p>
       </div>
-      <form action={updateProductAction} className="grid gap-4 rounded-lg border border-border bg-surface p-4 md:grid-cols-2">
+      <form action={updateProductAction} className="grid gap-4 rounded-[24px] border border-border bg-surface p-4 md:grid-cols-2">
         <input type="hidden" name="businessId" value={business.id} />
         <input type="hidden" name="productId" value={item.id} />
-        <label className="text-sm font-medium">Ürün adı<input name="name" required minLength={2} defaultValue={item.name} className="mt-2 min-h-11 w-full rounded-md border border-border bg-background px-3" /></label>
-        <label className="text-sm font-medium">Birim<input name="unit" required defaultValue={item.unit} className="mt-2 min-h-11 w-full rounded-md border border-border bg-background px-3" /></label>
-        <label className="text-sm font-medium">Kritik stok<input name="criticalStock" required type="number" min="0" defaultValue={item.critical} className="mt-2 min-h-11 w-full rounded-md border border-border bg-background px-3" /></label>
-        <label className="text-sm font-medium">Satış fiyatı<input name="salePriceCents" required inputMode="decimal" defaultValue={item.salePriceCents / 100} className="mt-2 min-h-11 w-full rounded-md border border-border bg-background px-3" /></label>
+        <label className="text-sm font-medium">Ürün adı<input name="name" required minLength={2} defaultValue={item.name} className="mt-2 min-h-11 w-full rounded-xl border border-border bg-background px-3" /></label>
+        <label className="text-sm font-medium">Birim<input name="unit" required defaultValue={item.unit} className="mt-2 min-h-11 w-full rounded-xl border border-border bg-background px-3" /></label>
+        <label className="text-sm font-medium">Kritik stok<input name="criticalStock" required type="number" min="0" defaultValue={item.critical} className="mt-2 min-h-11 w-full rounded-xl border border-border bg-background px-3" /></label>
+        <label className="text-sm font-medium">Satış fiyatı<input name="salePriceCents" required inputMode="decimal" defaultValue={item.salePriceCents / 100} className="mt-2 min-h-11 w-full rounded-xl border border-border bg-background px-3" /></label>
         <div className="flex items-end justify-end gap-2 md:col-span-2">
-          <Link href="/app/stock" className="inline-flex min-h-11 items-center rounded-md border border-border bg-background px-4 text-sm font-semibold">Vazgeç</Link>
+          <Link href="/app/stock" className="inline-flex min-h-11 items-center rounded-xl border border-border bg-background px-4 text-sm font-semibold">Vazgeç</Link>
           <ConfirmSubmitButton title="Ürün güncellensin mi?" description="Ürün kartı güncellenecek; stok miktarı hareket kayıtlarından hesaplanmaya devam edecek.">Güncelle</ConfirmSubmitButton>
         </div>
       </form>
-      <form action={deleteProductAction} className="rounded-lg border border-red-200 bg-red-50 p-4">
+      <form action={deleteProductAction} className="rounded-[24px] border border-red-200 bg-red-50 p-4">
         <input type="hidden" name="businessId" value={business.id} />
         <input type="hidden" name="productId" value={item.id} />
-        <ConfirmSubmitButton title="Ürün silinsin mi?" description="Ürün pasife alınacak; geçmiş stok hareketleri korunacak." className="inline-flex min-h-10 items-center justify-center rounded-md border border-red-200 bg-white px-3 text-sm font-semibold text-red-700">
+        <ConfirmSubmitButton title="Ürün silinsin mi?" description="Ürün pasife alınacak; geçmiş stok hareketleri korunacak." className="inline-flex min-h-10 items-center justify-center rounded-xl border border-red-200 bg-white px-3 text-sm font-semibold text-red-700">
           Ürünü sil
         </ConfirmSubmitButton>
       </form>

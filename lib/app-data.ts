@@ -46,6 +46,9 @@ export type Appointment = {
 export type BranchOption = {
   id: string;
   name: string;
+  phone: string;
+  address: string;
+  isActive: boolean;
 };
 
 export type StaffMemberWithProfile = {
@@ -117,14 +120,36 @@ export type FinanceSummary = {
   installmentDueCents: number;
 };
 
+export type StaffWorkingHour = {
+  id: string;
+  businessMemberId: string;
+  weekday: number;
+  startsAt: string;
+  endsAt: string;
+  isAvailable: boolean;
+};
+
+export type BusinessHour = {
+  weekday: number;
+  opensAt: string;
+  closesAt: string;
+  isClosed: boolean;
+};
+
 export type TenantBusiness = {
   id: string;
   name: string;
   plan: PlanKey;
+  planName: string;
+  planMonthlyPriceCents: number;
+  subscriptionPriceCents: number;
+  subscriptionStatus: string;
   branchLimit: number;
   staffLimitPerBranch: number;
   staffLimitScope: "business" | "branch";
   slotMinutes: number;
+  opensAt: string;
+  closesAt: string;
   activeModules: ModuleKey[];
 };
 
@@ -138,6 +163,8 @@ export type AppDataset = {
   stockItems: StockItem[];
   financeRows: FinanceRow[];
   financeSummary: FinanceSummary;
+  staffWorkingHours: StaffWorkingHour[];
+  businessHours: BusinessHour[];
   activeModules: ModuleKey[];
 };
 
@@ -180,12 +207,15 @@ export type SystemBusiness = {
   phone: string;
   plan: PlanKey;
   slotMinutes: number;
+  opensAt: string;
+  closesAt: string;
   isActive: boolean;
   createdAt: string;
   branchCount: number;
   memberCount: number;
   enabledModuleCount: number;
   subscriptionStatus: string;
+  subscriptionPriceCents: number;
 };
 
 export type SystemPlan = {
@@ -207,6 +237,7 @@ export type SystemSubscription = {
   currentPeriodStart: string;
   currentPeriodEnd: string;
   createdAt: string;
+  priceSnapshotCents: number;
 };
 
 export type SystemPayment = {
@@ -354,8 +385,14 @@ function emptyDataset(businessId: string, businessName: string): AppDataset {
       id: businessId,
       name: businessName,
       plan,
+      planName: "Standart",
+      planMonthlyPriceCents: 0,
+      subscriptionPriceCents: 0,
+      subscriptionStatus: "pending",
       ...limits,
       slotMinutes: 15,
+      opensAt: "09:00",
+      closesAt: "18:00",
       activeModules: [],
     },
     branches: [],
@@ -372,6 +409,8 @@ function emptyDataset(businessId: string, businessName: string): AppDataset {
       receivablesCents: 0,
       installmentDueCents: 0,
     },
+    staffWorkingHours: [],
+    businessHours: [],
     activeModules: [],
   };
 }
@@ -428,7 +467,7 @@ export async function getCurrentUserContext(): Promise<UserContext | null> {
       email: asString(profileRow.email, user.email ?? ""),
       phone: asString(profileRow.phone),
       avatarUrl: asString(profileRow.avatar_url),
-      theme: asString(profileRow.theme, "system") as UserProfile["theme"],
+      theme: asString(profileRow.theme, "light") as UserProfile["theme"],
       mustChangePassword: asBoolean(profileRow.must_change_password),
     },
     memberships,
@@ -490,17 +529,42 @@ export async function getTenantDataset(
 
     const root = asRecord(data);
     const businessRow = asRecord(root.business);
+    const planRow = asRecord(root.plan);
+    const subscriptionRow = asRecord(root.subscription);
     const plan = asPlanKey(businessRow.plan_key);
-    const limits = planLimits(plan);
+    const fallbackLimits = planLimits(plan);
+    const limits = {
+      branchLimit: asNumber(planRow.branch_limit, fallbackLimits.branchLimit),
+      staffLimitPerBranch: asNumber(
+        planRow.staff_limit,
+        fallbackLimits.staffLimitPerBranch,
+      ),
+      staffLimitScope:
+        asString(planRow.staff_limit_scope) === "branch"
+          ? ("branch" as const)
+          : ("business" as const),
+    };
 
     const activeModules = asArray(root.business_modules)
       .filter((row) => asBoolean(row.is_enabled))
       .map((row) => asString(row.module_key))
       .filter(isModuleKey);
 
+    const businessHours = asArray(root.business_hours).map((row) => ({
+      weekday: asNumber(row.weekday),
+      opensAt: asString(row.opens_at, "09:00").slice(0, 5),
+      closesAt: asString(row.closes_at, "18:00").slice(0, 5),
+      isClosed: asBoolean(row.is_closed),
+    }));
+    const firstOpenDay =
+      businessHours.find((row) => !row.isClosed) ?? businessHours[0];
+
     const branches = asArray(root.branches).map((branch) => ({
       id: asString(branch.id),
       name: asString(branch.name, "Merkez"),
+      phone: asString(branch.phone),
+      address: asString(branch.address),
+      isActive: asBoolean(branch.is_active, true),
     }));
 
     const appointments: Appointment[] = asArray(root.appointments).map(
@@ -631,6 +695,22 @@ export async function getTenantDataset(
       note: asString(entry.note),
     }));
 
+    const staffIds = staffMembers.map((member) => member.id);
+    const { data: workingHoursRows } = staffIds.length
+      ? await supabase
+          .from("staff_working_hours")
+          .select("id,business_member_id,weekday,starts_at,ends_at,is_available")
+          .in("business_member_id", staffIds)
+      : { data: [] };
+    const staffWorkingHours = asArray(workingHoursRows).map((row) => ({
+      id: asString(row.id),
+      businessMemberId: asString(row.business_member_id),
+      weekday: asNumber(row.weekday),
+      startsAt: asString(row.starts_at),
+      endsAt: asString(row.ends_at),
+      isAvailable: asBoolean(row.is_available, true),
+    }));
+
     const now = new Date();
     const dailyRevenueCents = financeRows
       .filter((row) => row.type === "gelir" && sameDay(row.occurredAt, now))
@@ -647,8 +727,14 @@ export async function getTenantDataset(
         id: asString(businessRow.id, membership.businessId),
         name: asString(businessRow.name, membership.businessName),
         plan,
+        planName: asString(planRow.name, plan === "premium" ? "Premium" : "Standart"),
+        planMonthlyPriceCents: asNumber(planRow.monthly_price_cents),
+        subscriptionPriceCents: asNumber(subscriptionRow.price_snapshot_cents),
+        subscriptionStatus: asString(subscriptionRow.status, "pending"),
         ...limits,
         slotMinutes: asNumber(businessRow.slot_minutes, 15),
+        opensAt: firstOpenDay?.opensAt ?? "09:00",
+        closesAt: firstOpenDay?.closesAt ?? "18:00",
         activeModules,
       },
       branches,
@@ -665,6 +751,8 @@ export async function getTenantDataset(
         receivablesCents: 0,
         installmentDueCents: 0,
       },
+      staffWorkingHours,
+      businessHours,
       activeModules,
     };
   } catch (error) {
@@ -719,12 +807,15 @@ export async function getSystemDataset(): Promise<SystemDataset> {
     phone: asString(business.phone),
     plan: asPlanKey(business.plan_key),
     slotMinutes: asNumber(business.slot_minutes, 15),
+    opensAt: asString(business.opens_at, "09:00").slice(0, 5),
+    closesAt: asString(business.closes_at, "18:00").slice(0, 5),
     isActive: asBoolean(business.is_active),
     createdAt: asString(business.created_at),
     branchCount: asNumber(business.branch_count),
     memberCount: asNumber(business.member_count),
     enabledModuleCount: asNumber(business.enabled_module_count),
     subscriptionStatus: asString(business.subscription_status, "pending"),
+    subscriptionPriceCents: asNumber(business.subscription_price_snapshot_cents),
   }));
   const plans = asArray(root.plans).map((plan) => ({
     key: asPlanKey(plan.key),
@@ -747,6 +838,7 @@ export async function getSystemDataset(): Promise<SystemDataset> {
     currentPeriodStart: asString(subscription.current_period_start),
     currentPeriodEnd: asString(subscription.current_period_end),
     createdAt: asString(subscription.created_at),
+    priceSnapshotCents: asNumber(subscription.price_snapshot_cents),
   }));
   const payments = asArray(root.payments).map((payment) => ({
     id: asString(payment.id),
@@ -761,6 +853,10 @@ export async function getSystemDataset(): Promise<SystemDataset> {
     (subscription) => subscription.status === "active",
   );
   const monthlyRecurringCents = activeSubscriptions.reduce((total, subscription) => {
+    if (subscription.priceSnapshotCents > 0) {
+      return total + subscription.priceSnapshotCents;
+    }
+
     const plan = plans.find((item) => item.key === subscription.plan);
     return total + (plan?.monthlyPriceCents ?? 0);
   }, 0);

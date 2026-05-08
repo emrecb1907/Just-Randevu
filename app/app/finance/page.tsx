@@ -35,18 +35,18 @@ export default async function FinancePage() {
         </div>
         <Link
           href="/app/finance/new"
-          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-bold text-white shadow-sm"
+          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-bold text-white shadow-sm"
         >
           <Plus size={16} />
           Yeni kayıt
         </Link>
       </div>
-      <section className="rounded-lg border border-border bg-surface p-4">
+      <section className="rounded-[24px] border border-border bg-surface p-4">
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
           {rows.map(([label, value]) => (
             <div
               key={label}
-              className="rounded-md border border-border bg-background p-4"
+              className="rounded-xl border border-border bg-background p-4"
             >
               <p className="text-sm text-muted-foreground">{label}</p>
               <p className="mt-2 text-xl font-semibold">
@@ -56,7 +56,7 @@ export default async function FinancePage() {
           ))}
         </div>
       </section>
-      <section className="overflow-hidden rounded-lg border border-border bg-surface">
+      <section className="overflow-hidden rounded-[24px] border border-border bg-surface">
         <div className="grid grid-cols-[1fr_1fr_1fr_52px] border-b border-border bg-muted/50 p-3 text-xs font-semibold text-muted-foreground md:grid-cols-[1fr_1fr_1fr_1fr_52px]">
           <span>Tip</span>
           <span>Kategori</span>
@@ -77,7 +77,7 @@ export default async function FinancePage() {
             </span>
             <Link
               href={`/app/finance/${entry.id}/edit`}
-              className="grid size-10 place-items-center rounded-md border border-border bg-background text-muted-foreground hover:text-foreground"
+              className="grid size-10 place-items-center rounded-xl border border-border bg-background text-muted-foreground hover:text-foreground"
               aria-label={`${entry.category} düzenle`}
             >
               <Pencil size={16} />

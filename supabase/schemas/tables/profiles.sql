@@ -7,7 +7,7 @@ create table public.profiles (
   email text,
   phone text,
   avatar_url text,
-  theme text not null default 'system' check (theme in ('system', 'light', 'dark')),
+  theme text not null default 'light' check (theme in ('system', 'light', 'dark')),
   must_change_password boolean not null default false,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()

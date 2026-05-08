@@ -36,7 +36,7 @@ export default async function EditCustomerPage({ params }: EditCustomerPageProps
       </div>
       <form
         action={updateCustomerAction}
-        className="grid gap-4 rounded-lg border border-border bg-surface p-4 md:grid-cols-2"
+        className="grid gap-4 rounded-[24px] border border-border bg-surface p-4 md:grid-cols-2"
       >
         <input type="hidden" name="businessId" value={business.id} />
         <input type="hidden" name="customerId" value={customer.id} />
@@ -47,7 +47,7 @@ export default async function EditCustomerPage({ params }: EditCustomerPageProps
             required
             minLength={2}
             defaultValue={customer.firstName}
-            className="mt-2 min-h-11 w-full rounded-md border border-border bg-background px-3"
+            className="mt-2 min-h-11 w-full rounded-xl border border-border bg-background px-3"
           />
         </label>
         <label className="text-sm font-medium">
@@ -57,7 +57,7 @@ export default async function EditCustomerPage({ params }: EditCustomerPageProps
             required
             minLength={2}
             defaultValue={customer.lastName}
-            className="mt-2 min-h-11 w-full rounded-md border border-border bg-background px-3"
+            className="mt-2 min-h-11 w-full rounded-xl border border-border bg-background px-3"
           />
         </label>
         <PhoneInput defaultValue={customer.phone} />
@@ -67,7 +67,7 @@ export default async function EditCustomerPage({ params }: EditCustomerPageProps
             name="branchId"
             required
             defaultValue={customer.branchId || primaryBranch?.id}
-            className="mt-2 min-h-11 w-full rounded-md border border-border bg-background px-3"
+            className="mt-2 min-h-11 w-full rounded-xl border border-border bg-background px-3"
           >
             {branches.map((branch) => (
               <option key={branch.id} value={branch.id}>
@@ -82,7 +82,7 @@ export default async function EditCustomerPage({ params }: EditCustomerPageProps
             name="email"
             type="email"
             defaultValue={customer.email}
-            className="mt-2 min-h-11 w-full rounded-md border border-border bg-background px-3"
+            className="mt-2 min-h-11 w-full rounded-xl border border-border bg-background px-3"
           />
         </label>
         <label className="text-sm font-medium md:col-span-2">
@@ -91,7 +91,7 @@ export default async function EditCustomerPage({ params }: EditCustomerPageProps
             name="notes"
             maxLength={1000}
             defaultValue={customer.notes}
-            className="mt-2 min-h-28 w-full rounded-md border border-border bg-background px-3 py-2"
+            className="mt-2 min-h-28 w-full rounded-xl border border-border bg-background px-3 py-2"
           />
         </label>
         <div className="space-y-3 text-sm">
@@ -118,7 +118,7 @@ export default async function EditCustomerPage({ params }: EditCustomerPageProps
         <div className="flex items-end justify-end gap-2">
           <Link
             href="/app/customers"
-            className="inline-flex min-h-11 items-center rounded-md border border-border bg-background px-4 text-sm font-semibold"
+            className="inline-flex min-h-11 items-center rounded-xl border border-border bg-background px-4 text-sm font-semibold"
           >
             Vazgeç
           </Link>
@@ -130,13 +130,13 @@ export default async function EditCustomerPage({ params }: EditCustomerPageProps
           </ConfirmSubmitButton>
         </div>
       </form>
-      <form action={deleteCustomerAction} className="rounded-lg border border-red-200 bg-red-50 p-4">
+      <form action={deleteCustomerAction} className="rounded-[24px] border border-red-200 bg-red-50 p-4">
         <input type="hidden" name="businessId" value={business.id} />
         <input type="hidden" name="customerId" value={customer.id} />
         <ConfirmSubmitButton
           title="Müşteri silinsin mi?"
           description="Müşteri pasife alınacak; geçmiş randevu kayıtları korunacak."
-          className="inline-flex min-h-10 items-center justify-center rounded-md border border-red-200 bg-white px-3 text-sm font-semibold text-red-700"
+          className="inline-flex min-h-10 items-center justify-center rounded-xl border border-red-200 bg-white px-3 text-sm font-semibold text-red-700"
         >
           Müşteriyi sil
         </ConfirmSubmitButton>

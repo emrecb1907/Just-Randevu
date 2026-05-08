@@ -24,17 +24,34 @@ export default async function NewCustomerPage() {
       {primaryBranch ? (
         <form
           action={createCustomerAction}
-          className="grid gap-4 rounded-lg border border-border bg-surface p-4 md:grid-cols-2"
+          className="grid gap-4 rounded-[24px] border border-border bg-surface p-4 md:grid-cols-2"
         >
           <input type="hidden" name="businessId" value={business.id} />
-          <input type="hidden" name="branchId" value={primaryBranch.id} />
+          {branches.length === 1 ? (
+            <input type="hidden" name="branchId" value={primaryBranch.id} />
+          ) : (
+            <label className="text-sm font-medium md:col-span-2">
+              Şube
+              <select
+                name="branchId"
+                required
+                className="mt-2 min-h-11 w-full rounded-xl border border-border bg-background px-3"
+              >
+                {branches.map((branch) => (
+                  <option key={branch.id} value={branch.id}>
+                    {branch.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
           <label className="text-sm font-medium">
             Ad
             <input
               name="firstName"
               required
               minLength={2}
-              className="mt-2 min-h-11 w-full rounded-md border border-border bg-background px-3"
+              className="mt-2 min-h-11 w-full rounded-xl border border-border bg-background px-3"
               placeholder="Müşteri adı"
             />
           </label>
@@ -44,7 +61,7 @@ export default async function NewCustomerPage() {
               name="lastName"
               required
               minLength={2}
-              className="mt-2 min-h-11 w-full rounded-md border border-border bg-background px-3"
+              className="mt-2 min-h-11 w-full rounded-xl border border-border bg-background px-3"
               placeholder="Müşteri soyadı"
             />
           </label>
@@ -54,7 +71,7 @@ export default async function NewCustomerPage() {
             <input
               name="email"
               type="email"
-              className="mt-2 min-h-11 w-full rounded-md border border-border bg-background px-3"
+              className="mt-2 min-h-11 w-full rounded-xl border border-border bg-background px-3"
               placeholder="opsiyonel"
             />
           </label>
@@ -63,7 +80,7 @@ export default async function NewCustomerPage() {
             <textarea
               name="notes"
               maxLength={1000}
-              className="mt-2 min-h-28 w-full rounded-md border border-border bg-background px-3 py-2"
+              className="mt-2 min-h-28 w-full rounded-xl border border-border bg-background px-3 py-2"
               placeholder="Alerji, tercih, özel not..."
             />
           </label>
@@ -80,7 +97,7 @@ export default async function NewCustomerPage() {
           <div className="flex items-end justify-end gap-2">
             <Link
               href="/app/customers"
-              className="inline-flex min-h-11 items-center rounded-md border border-border bg-background px-4 text-sm font-semibold"
+              className="inline-flex min-h-11 items-center rounded-xl border border-border bg-background px-4 text-sm font-semibold"
             >
               Vazgeç
             </Link>
@@ -93,7 +110,7 @@ export default async function NewCustomerPage() {
           </div>
         </form>
       ) : (
-        <div className="rounded-lg border border-border bg-surface p-4 text-sm text-muted-foreground">
+        <div className="rounded-[24px] border border-border bg-surface p-4 text-sm text-muted-foreground">
           Müşteri kaydı için önce aktif bir şube gerekir.
         </div>
       )}

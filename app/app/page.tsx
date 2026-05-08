@@ -10,7 +10,6 @@ import {
 import { CalendarBoard } from "@/components/calendar-board";
 import { MetricCard } from "@/components/metric-card";
 import { ModuleCard } from "@/components/module-card";
-import { StaffDensityBoard } from "@/components/staff-density-board";
 import {
   getSystemDataset,
   getTenantDataset,
@@ -62,12 +61,12 @@ export default async function AppPage() {
           <MetricCard
             label="Aylık paket geliri"
             value={formatCurrency(system.metrics.monthlyRecurringCents)}
-            hint="Aktif aboneliklerin plan fiyatı toplamı"
+            hint="Aktif aboneliklerin kayıtlı ücret toplamı"
             icon={WalletCards}
           />
         </div>
 
-        <section className="overflow-hidden rounded-lg border border-border bg-surface">
+        <section className="overflow-hidden rounded-[24px] border border-border bg-surface shadow-panel">
           <div className="grid grid-cols-[1.3fr_0.8fr_0.8fr_0.8fr] border-b border-border bg-muted/50 p-3 text-xs font-semibold text-muted-foreground">
             <span>İşletme</span>
             <span>Plan</span>
@@ -128,8 +127,11 @@ export default async function AppPage() {
             Randevu, personel, müşteri, stok, finans ve paket kullanım özeti.
           </p>
         </div>
-        <div className="rounded-md border border-border bg-surface px-3 py-2 text-sm">
-          Slot: <span className="font-semibold">{business.slotMinutes} dk</span>
+        <div className="rounded-xl border border-border bg-surface px-3 py-2 text-sm shadow-sm">
+          Çalışma saati:{" "}
+          <span className="font-semibold">
+            {business.opensAt} - {business.closesAt}
+          </span>
         </div>
       </div>
 
@@ -164,14 +166,14 @@ export default async function AppPage() {
         />
       </div>
 
-      <CalendarBoard appointments={appointments} />
-      <StaffDensityBoard
+      <CalendarBoard
         appointments={appointments}
-        staffMembers={staffMembers}
+        opensAt={business.opensAt}
+        closesAt={business.closesAt}
       />
 
       <section className="grid gap-4 xl:grid-cols-[1fr_360px]">
-        <div className="rounded-lg border border-border bg-surface p-4">
+        <div className="rounded-[24px] border border-border bg-surface p-4 shadow-panel">
           <h2 className="text-lg font-semibold">Personel Performansı</h2>
           <div className="mt-4 space-y-3">
             {staffMembers.map((staff) => (
@@ -192,7 +194,7 @@ export default async function AppPage() {
             ))}
           </div>
         </div>
-        <div className="rounded-lg border border-border bg-surface p-4">
+        <div className="rounded-[24px] border border-border bg-surface p-4 shadow-panel">
           <h2 className="text-lg font-semibold">Paket Kullanımı</h2>
           <div className="mt-4 space-y-4 text-sm">
             <div>

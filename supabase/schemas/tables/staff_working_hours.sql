@@ -12,3 +12,6 @@ create table public.staff_working_hours (
 );;
 
 alter table public.staff_working_hours enable row level security;
+
+grant select, insert, update, delete on public.staff_working_hours to authenticated;
+grant select, insert, update, delete on public.staff_working_hours to service_role;

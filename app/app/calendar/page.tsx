@@ -2,12 +2,12 @@ import Link from "next/link";
 import { Pencil, Plus } from "lucide-react";
 
 import { CalendarBoard } from "@/components/calendar-board";
-import { StaffDensityBoard } from "@/components/staff-density-board";
 import { getTenantDataset, requireTenantContext } from "@/lib/app-data";
 
 export default async function CalendarPage() {
   const { membership } = await requireTenantContext();
-  const { appointments, staffMembers, customers, services } = await getTenantDataset(membership);
+  const { business, appointments, staffMembers, customers, services } =
+    await getTenantDataset(membership);
   const canCreateAppointment =
     customers.length > 0 && staffMembers.length > 0 && services.length > 0;
 
@@ -20,31 +20,31 @@ export default async function CalendarPage() {
             Takvim
           </h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            Çakışma kontrolü Supabase tarafında; randevu oluşturma ve düzenleme
-            ayrı akışlarda yapılır.
+            Uygunluk kontrolü otomatik yapılır; randevu oluşturma ve düzenleme
+            ayrı akışlarda ilerler.
           </p>
         </div>
         {canCreateAppointment ? (
           <Link
             href="/app/calendar/new"
-            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-bold text-white shadow-sm"
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-bold text-white shadow-sm"
           >
             <Plus size={16} />
             Yeni randevu
           </Link>
         ) : null}
       </div>
-      <CalendarBoard appointments={appointments} />
-      <StaffDensityBoard
+      <CalendarBoard
         appointments={appointments}
-        staffMembers={staffMembers}
+        opensAt={business.opensAt}
+        closesAt={business.closesAt}
       />
       {!canCreateAppointment ? (
-        <div className="rounded-lg border border-border bg-surface p-4 text-sm text-muted-foreground">
+        <div className="rounded-[22px] border border-border bg-surface p-4 text-sm text-muted-foreground shadow-panel">
           Randevu eklemek için önce müşteri, personel ve hizmet kaydı gerekir.
         </div>
       ) : null}
-      <section className="overflow-hidden rounded-lg border border-border bg-surface">
+      <section className="overflow-hidden rounded-[22px] border border-border bg-surface shadow-panel">
         <div className="grid grid-cols-[1fr_1fr_52px] border-b border-border bg-muted/50 p-3 text-xs font-semibold text-muted-foreground md:grid-cols-[0.9fr_1fr_1fr_1fr_52px]">
           <span>Zaman</span>
           <span>Müşteri</span>
@@ -58,7 +58,7 @@ export default async function CalendarPage() {
             <span>{appointment.customer}</span>
             <span className="hidden md:block">{appointment.staffName}</span>
             <span className="hidden md:block">{appointment.service}</span>
-            <Link href={`/app/calendar/${appointment.id}/edit`} className="grid size-10 place-items-center rounded-md border border-border bg-background text-muted-foreground hover:text-foreground" aria-label="Randevu düzenle">
+            <Link href={`/app/calendar/${appointment.id}/edit`} className="grid size-10 place-items-center rounded-xl border border-border bg-background text-muted-foreground hover:text-foreground" aria-label="Randevu düzenle">
               <Pencil size={16} />
             </Link>
           </article>

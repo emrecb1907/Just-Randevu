@@ -31,6 +31,7 @@ begin
       'products', '[]'::jsonb,
       'income_expenses', '[]'::jsonb,
       'business_modules', '[]'::jsonb,
+      'business_hours', '[]'::jsonb,
       'appointments', '[]'::jsonb
     );
   end if;
@@ -40,6 +41,19 @@ begin
       select to_jsonb(b)
       from public.businesses b
       where b.id = selected_business_id
+    ),
+    'plan', (
+      select to_jsonb(p)
+      from public.businesses b
+      join public.plans p on p.key = b.plan_key
+      where b.id = selected_business_id
+    ),
+    'subscription', (
+      select to_jsonb(s)
+      from public.subscriptions s
+      where s.business_id = selected_business_id
+      order by s.created_at desc
+      limit 1
     ),
     'branches', coalesce((
       select jsonb_agg(to_jsonb(br) order by br.created_at asc)
@@ -124,6 +138,11 @@ begin
       select jsonb_agg(to_jsonb(bm) order by bm.module_key asc)
       from public.business_modules bm
       where bm.business_id = selected_business_id
+    ), '[]'::jsonb),
+    'business_hours', coalesce((
+      select jsonb_agg(to_jsonb(bh) order by bh.weekday asc)
+      from public.business_hours bh
+      where bh.business_id = selected_business_id
     ), '[]'::jsonb),
     'appointments', coalesce((
       select jsonb_agg(

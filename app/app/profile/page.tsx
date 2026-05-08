@@ -14,13 +14,13 @@ export default async function ProfilePage() {
           Hesap ve Profil
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Admin ve staff kendi profilini düzenler; admin kendi işletmesindeki
-          staff profillerini görebilir.
+          Hesapta görünen adınızı, iletişim bilgilerinizi ve tema tercihinizi
+          düzenleyin.
         </p>
       </div>
       <form
         action={updateProfileAction}
-        className="grid gap-4 rounded-lg border border-border bg-surface p-4 md:grid-cols-2"
+        className="grid gap-4 rounded-[24px] border border-border bg-surface p-5 shadow-panel md:grid-cols-2"
       >
         <input
           type="hidden"
@@ -31,7 +31,9 @@ export default async function ProfilePage() {
           Ad
           <input
             name="firstName"
-            className="mt-2 min-h-11 w-full rounded-md border border-border bg-background px-3"
+            required
+            minLength={2}
+            className="mt-2 min-h-11 w-full rounded-xl border border-border bg-background px-3"
             defaultValue={profile.firstName}
           />
         </label>
@@ -39,7 +41,9 @@ export default async function ProfilePage() {
           Soyad
           <input
             name="lastName"
-            className="mt-2 min-h-11 w-full rounded-md border border-border bg-background px-3"
+            required
+            minLength={2}
+            className="mt-2 min-h-11 w-full rounded-xl border border-border bg-background px-3"
             defaultValue={profile.lastName}
           />
         </label>
@@ -48,7 +52,8 @@ export default async function ProfilePage() {
           <input
             name="email"
             type="email"
-            className="mt-2 min-h-11 w-full rounded-md border border-border bg-background px-3"
+            required
+            className="mt-2 min-h-11 w-full rounded-xl border border-border bg-background px-3"
             defaultValue={profile.email}
           />
         </label>
@@ -58,7 +63,7 @@ export default async function ProfilePage() {
           <input
             name="avatarUrl"
             type="url"
-            className="mt-2 min-h-11 w-full rounded-md border border-border bg-background px-3"
+            className="mt-2 min-h-11 w-full rounded-xl border border-border bg-background px-3"
             placeholder="https://..."
             defaultValue={profile.avatarUrl}
           />
@@ -67,10 +72,10 @@ export default async function ProfilePage() {
           Tema
           <select
             name="theme"
-            className="mt-2 min-h-11 w-full rounded-md border border-border bg-background px-3"
-            defaultValue={profile.theme}
+            required
+            className="mt-2 min-h-11 w-full rounded-xl border border-border bg-background px-3"
+            defaultValue={profile.theme === "dark" ? "dark" : "light"}
           >
-            <option value="system">Sistem</option>
             <option value="light">Light</option>
             <option value="dark">Dark</option>
           </select>

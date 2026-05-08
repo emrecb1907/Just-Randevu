@@ -29,24 +29,24 @@ export default async function EditServicePage({ params }: EditServicePageProps) 
           {service.name}
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Güncel değerler yalnızca yeni randevu snapshotlarını etkiler.
+          Güncel süre ve fiyat yalnızca yeni randevularda kullanılır.
         </p>
       </div>
       <form
         action={updateServiceAction}
-        className="grid gap-4 rounded-lg border border-border bg-surface p-4 md:grid-cols-2"
+        className="grid gap-4 rounded-[24px] border border-border bg-surface p-5 shadow-panel md:grid-cols-2"
       >
         <input type="hidden" name="businessId" value={business.id} />
         <input type="hidden" name="serviceId" value={service.id} />
         <input type="hidden" name="isActive" value="true" />
         <label className="text-sm font-medium">
-          İşlem adı
+          Hizmet adı
           <input
             name="name"
             required
             minLength={2}
             defaultValue={service.name}
-            className="mt-2 min-h-11 w-full rounded-md border border-border bg-background px-3"
+            className="mt-2 min-h-11 w-full rounded-xl border border-border bg-background px-3"
           />
         </label>
         <label className="text-sm font-medium">
@@ -56,7 +56,7 @@ export default async function EditServicePage({ params }: EditServicePageProps) 
             required
             minLength={2}
             defaultValue={service.category}
-            className="mt-2 min-h-11 w-full rounded-md border border-border bg-background px-3"
+            className="mt-2 min-h-11 w-full rounded-xl border border-border bg-background px-3"
           />
         </label>
         <label className="text-sm font-medium">
@@ -68,7 +68,7 @@ export default async function EditServicePage({ params }: EditServicePageProps) 
             min="1"
             max="600"
             defaultValue={service.duration}
-            className="mt-2 min-h-11 w-full rounded-md border border-border bg-background px-3"
+            className="mt-2 min-h-11 w-full rounded-xl border border-border bg-background px-3"
           />
         </label>
         <label className="text-sm font-medium">
@@ -78,31 +78,31 @@ export default async function EditServicePage({ params }: EditServicePageProps) 
             required
             inputMode="decimal"
             defaultValue={service.priceCents / 100}
-            className="mt-2 min-h-11 w-full rounded-md border border-border bg-background px-3"
+            className="mt-2 min-h-11 w-full rounded-xl border border-border bg-background px-3"
           />
         </label>
         <div className="flex items-end justify-end gap-2 md:col-span-2">
           <Link
             href="/app/services"
-            className="inline-flex min-h-11 items-center rounded-md border border-border bg-background px-4 text-sm font-semibold"
+            className="inline-flex min-h-11 items-center rounded-xl border border-border bg-background px-4 text-sm font-semibold"
           >
             Vazgeç
           </Link>
           <ConfirmSubmitButton
             title="Hizmet güncellensin mi?"
-            description="Yeni randevular güncel süre ve fiyat snapshotı ile oluşacak."
+            description="Yeni randevular güncel süre ve fiyatla oluşacak. Eski kayıtlar değişmez."
           >
             Güncelle
           </ConfirmSubmitButton>
         </div>
       </form>
-      <form action={deleteServiceAction} className="rounded-lg border border-red-200 bg-red-50 p-4">
+      <form action={deleteServiceAction} className="rounded-[24px] border border-red-200 bg-red-50 p-4">
         <input type="hidden" name="businessId" value={business.id} />
         <input type="hidden" name="serviceId" value={service.id} />
         <ConfirmSubmitButton
           title="Hizmet silinsin mi?"
-          description="Hizmet pasife alınacak; geçmiş randevu snapshotları korunacak."
-          className="inline-flex min-h-10 items-center justify-center rounded-md border border-red-200 bg-white px-3 text-sm font-semibold text-red-700"
+          description="Hizmet pasife alınacak. Geçmiş randevular korunacak."
+          className="inline-flex min-h-10 items-center justify-center rounded-xl border border-red-200 bg-white px-3 text-sm font-semibold text-red-700"
         >
           Hizmeti sil
         </ConfirmSubmitButton>

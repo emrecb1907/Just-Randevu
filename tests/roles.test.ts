@@ -6,7 +6,11 @@ describe("Role navigation boundaries", () => {
   it("keeps super admin away from tenant operation modules", () => {
     const systemHrefs = systemNavigation.map((item) => item.href);
 
-    expect(systemHrefs).toEqual(["/app", "/app/super-admin"]);
+    expect(systemHrefs).toEqual([
+      "/app",
+      "/app/super-admin",
+      "/app/super-admin/plans",
+    ]);
     expect(systemHrefs).not.toContain("/app/stock");
     expect(systemHrefs).not.toContain("/app/finance");
     expect(systemHrefs).not.toContain("/app/customers");

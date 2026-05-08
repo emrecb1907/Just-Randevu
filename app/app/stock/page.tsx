@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Boxes, Pencil, Plus } from "lucide-react";
 import { redirect } from "next/navigation";
 
+import { SurfaceCard } from "@/components/surface-card";
 import { getTenantDataset, requireTenantContext } from "@/lib/app-data";
 import { formatCurrency } from "@/lib/utils";
 
@@ -27,7 +28,7 @@ export default async function StockPage() {
         </div>
         <Link
           href="/app/stock/new"
-          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-bold text-white shadow-sm"
+          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-bold text-white shadow-sm"
         >
           <Plus size={16} />
           Yeni ürün
@@ -37,9 +38,10 @@ export default async function StockPage() {
         {stockItems.map((item) => {
           const critical = item.stock <= item.critical;
           return (
-            <article
+            <SurfaceCard
+              as="article"
               key={item.id}
-              className="rounded-lg border border-border bg-surface p-4"
+              className="shadow-sm"
             >
               <div className="flex items-start justify-between gap-3">
                 <div>
@@ -58,18 +60,18 @@ export default async function StockPage() {
               </p>
               <Link
                 href={`/app/stock/${item.id}/edit`}
-                className="mt-4 inline-flex min-h-10 items-center justify-center gap-2 rounded-md border border-border bg-background px-3 text-sm font-semibold"
+                className="mt-4 inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-border bg-background px-3 text-sm font-semibold"
               >
                 <Pencil size={15} />
                 Düzenle
               </Link>
-            </article>
+            </SurfaceCard>
           );
         })}
         {stockItems.length === 0 ? (
-          <div className="rounded-lg border border-border bg-surface p-4 text-sm text-muted-foreground">
+          <SurfaceCard className="text-sm text-muted-foreground">
             Henüz ürün kaydı yok.
-          </div>
+          </SurfaceCard>
         ) : null}
       </section>
     </div>

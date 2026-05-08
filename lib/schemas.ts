@@ -97,6 +97,7 @@ export const businessRegistrationSchema = z.object({
   plan: z.enum(["standard", "premium"]),
   slotMinutes: z.coerce
     .number()
+    .default(15)
     .pipe(
       z.union([
         z.literal(5),
@@ -106,6 +107,8 @@ export const businessRegistrationSchema = z.object({
         z.literal(30),
       ]),
     ),
+  opensAt: z.string().regex(/^\d{2}:\d{2}$/).default("09:00"),
+  closesAt: z.string().regex(/^\d{2}:\d{2}$/).default("18:00"),
   kvkkConsent: requiredKvkkConsentSchema,
 });
 
@@ -129,6 +132,31 @@ export const staffCreateSchema = z.object({
   forcePasswordChange: z.preprocess(
     (value) => value === "true" || value === true,
     z.literal(true),
+  ),
+});
+
+export const branchSchema = z.object({
+  name: z.string().min(2, "Şube adı en az 2 karakter olmalıdır.").max(80),
+  phone: turkishPhoneSchema.optional().or(z.literal("")),
+  address: z.string().max(240).optional(),
+});
+
+export const branchUpdateSchema = branchSchema.extend({
+  branchId: z.string().uuid(),
+  isActive: z.preprocess(
+    (value) => value === "true" || value === true || value === "on",
+    z.boolean(),
+  ),
+});
+
+export const staffScheduleSchema = z.object({
+  memberId: z.string().uuid(),
+  weekday: z.coerce.number().int().min(0).max(6),
+  startsAt: z.string().regex(/^\d{2}:\d{2}$/),
+  endsAt: z.string().regex(/^\d{2}:\d{2}$/),
+  isAvailable: z.preprocess(
+    (value) => value === "true" || value === true || value === "on",
+    z.boolean(),
   ),
 });
 
@@ -273,6 +301,7 @@ export const businessSettingsSchema = z.object({
   name: z.string().min(2).max(120),
   slotMinutes: z.coerce
     .number()
+    .default(15)
     .pipe(
       z.union([
         z.literal(5),
@@ -282,6 +311,8 @@ export const businessSettingsSchema = z.object({
         z.literal(30),
       ]),
     ),
+  opensAt: z.string().regex(/^\d{2}:\d{2}$/),
+  closesAt: z.string().regex(/^\d{2}:\d{2}$/),
 });
 
 export const systemBusinessUpdateSchema = z.object({
@@ -292,6 +323,7 @@ export const systemBusinessUpdateSchema = z.object({
   plan: z.enum(["standard", "premium"]),
   slotMinutes: z.coerce
     .number()
+    .default(15)
     .pipe(
       z.union([
         z.literal(5),
@@ -301,6 +333,20 @@ export const systemBusinessUpdateSchema = z.object({
         z.literal(30),
       ]),
     ),
+  opensAt: z.string().regex(/^\d{2}:\d{2}$/),
+  closesAt: z.string().regex(/^\d{2}:\d{2}$/),
+  isActive: z.preprocess(
+    (value) => value === "true" || value === true || value === "on",
+    z.boolean(),
+  ),
+});
+
+export const planUpdateSchema = z.object({
+  plan: z.enum(["standard", "premium"]),
+  monthlyPriceCents: moneyCentsSchema,
+  branchLimit: z.coerce.number().int().min(1).max(100),
+  staffLimit: z.coerce.number().int().min(1).max(1000),
+  staffLimitScope: z.enum(["business", "branch"]),
   isActive: z.preprocess(
     (value) => value === "true" || value === true || value === "on",
     z.boolean(),

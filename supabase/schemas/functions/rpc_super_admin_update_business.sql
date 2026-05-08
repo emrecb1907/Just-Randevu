@@ -1,4 +1,6 @@
 drop function if exists public.rpc_super_admin_update_business(uuid, text, text, text, public.plan_key, integer, boolean) cascade;
+drop function if exists public.rpc_super_admin_update_business(uuid, text, text, text, public.plan_key, integer, time, time, boolean) cascade;
+drop function if exists public.rpc_super_admin_update_business(uuid, text, text, text, public.plan_key, boolean, integer, time, time) cascade;
 
 create or replace function public.rpc_super_admin_update_business(
   target_business_id uuid,
@@ -6,8 +8,10 @@ create or replace function public.rpc_super_admin_update_business(
   business_email text,
   business_phone text,
   selected_plan public.plan_key,
-  selected_slot_minutes integer,
-  target_is_active boolean
+  target_is_active boolean,
+  selected_slot_minutes integer default 15,
+  business_opens_at time default '09:00',
+  business_closes_at time default '18:00'
 )
 returns uuid
 language plpgsql
@@ -38,9 +42,29 @@ begin
     set is_enabled = excluded.is_enabled,
         updated_at = now();
 
-  insert into public.subscriptions (business_id, plan_key, status)
-  values (target_business_id, selected_plan, 'pending')
-  on conflict do nothing;
+  insert into public.subscriptions (business_id, plan_key, status, price_snapshot_cents)
+  select target_business_id, selected_plan, 'pending', p.monthly_price_cents
+  from public.plans p
+  where p.key = selected_plan
+    and not exists (
+      select 1
+      from (
+        select s.plan_key
+        from public.subscriptions s
+        where s.business_id = target_business_id
+        order by s.created_at desc
+        limit 1
+      ) latest_subscription
+      where latest_subscription.plan_key = selected_plan
+    );
+
+  insert into public.business_hours (business_id, weekday, opens_at, closes_at, is_closed)
+  select target_business_id, weekday, business_opens_at, business_closes_at, false
+  from generate_series(0, 6) as weekday
+  on conflict (business_id, weekday) do update
+    set opens_at = excluded.opens_at,
+        closes_at = excluded.closes_at,
+        is_closed = false;
 
   return target_business_id;
 end;

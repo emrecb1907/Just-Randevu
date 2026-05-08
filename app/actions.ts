@@ -5,6 +5,8 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import {
+  branchSchema,
+  branchUpdateSchema,
   businessRegistrationSchema,
   businessSettingsSchema,
   customerSchema,
@@ -16,12 +18,14 @@ import {
   incomeExpenseUpdateSchema,
   loginSchema,
   moduleToggleSchema,
+  planUpdateSchema,
   productCreateSchema,
   productUpdateSchema,
   profileSchema,
   serviceSchema,
   serviceUpdateSchema,
   staffCreateSchema,
+  staffScheduleSchema,
   staffUpdateSchema,
   systemBusinessUpdateSchema,
 } from "@/lib/schemas";
@@ -29,7 +33,12 @@ import {
   createServerSupabaseClient,
   createSupabaseAdminClient,
 } from "@/lib/supabase/server";
-import { requireSuperAdminContext, requireTenantContext, requireUserContext } from "@/lib/app-data";
+import {
+  getTenantDataset,
+  requireSuperAdminContext,
+  requireTenantContext,
+  requireUserContext,
+} from "@/lib/app-data";
 
 function formObject(formData: FormData) {
   return Object.fromEntries(formData.entries());
@@ -71,6 +80,12 @@ export async function loginAction(formData: FormData) {
   redirect("/app");
 }
 
+export async function logoutAction() {
+  const supabase = await createServerSupabaseClient();
+  await supabase.auth.signOut();
+  redirect("/login");
+}
+
 export async function registerBusinessAction(formData: FormData) {
   const input = businessRegistrationSchema.parse(formObject(formData));
   const admin = createSupabaseAdminClient();
@@ -103,7 +118,7 @@ export async function registerBusinessAction(formData: FormData) {
     profile_email: input.email,
     profile_phone: input.phone,
     profile_avatar_url: null,
-    profile_theme: "system",
+    profile_theme: "light",
     profile_must_change_password: false,
   });
 
@@ -120,6 +135,8 @@ export async function registerBusinessAction(formData: FormData) {
       business_phone: input.phone,
       selected_plan: input.plan,
       selected_slot_minutes: input.slotMinutes,
+      business_opens_at: input.opensAt,
+      business_closes_at: input.closesAt,
     },
   );
 
@@ -171,7 +188,7 @@ export async function superAdminCreateBusinessAction(formData: FormData) {
     profile_email: input.email,
     profile_phone: input.phone,
     profile_avatar_url: null,
-    profile_theme: "system",
+    profile_theme: "light",
     profile_must_change_password: true,
   });
 
@@ -188,6 +205,8 @@ export async function superAdminCreateBusinessAction(formData: FormData) {
       business_phone: input.phone,
       selected_plan: input.plan,
       selected_slot_minutes: input.slotMinutes,
+      business_opens_at: input.opensAt,
+      business_closes_at: input.closesAt,
     },
   );
 
@@ -211,6 +230,8 @@ export async function superAdminUpdateBusinessAction(formData: FormData) {
     business_phone: input.phone || null,
     selected_plan: input.plan,
     selected_slot_minutes: input.slotMinutes,
+    business_opens_at: input.opensAt,
+    business_closes_at: input.closesAt,
     target_is_active: input.isActive,
   });
 
@@ -231,6 +252,28 @@ export async function superAdminDeleteBusinessAction(formData: FormData) {
   const admin = createSupabaseAdminClient();
   const { error } = await admin.rpc("rpc_super_admin_delete_business", {
     target_business_id: input.id,
+  });
+
+  if (error) {
+    redirect(`/app/super-admin?error=${encodeURIComponent(error.message)}`);
+  }
+
+  revalidatePath("/app");
+  revalidatePath("/app/super-admin");
+  redirect("/app/super-admin");
+}
+
+export async function superAdminUpdatePlanAction(formData: FormData) {
+  await requireSuperAdminContext();
+  const input = planUpdateSchema.parse(formObject(formData));
+  const admin = createSupabaseAdminClient();
+  const { error } = await admin.rpc("rpc_super_admin_update_plan", {
+    target_plan: input.plan,
+    target_monthly_price_cents: input.monthlyPriceCents,
+    target_branch_limit: input.branchLimit,
+    target_staff_limit: input.staffLimit,
+    target_staff_limit_scope: input.staffLimitScope,
+    target_is_active: input.isActive,
   });
 
   if (error) {
@@ -408,7 +451,7 @@ export async function createStaffAction(formData: FormData) {
     profile_email: input.email,
     profile_phone: input.phone,
     profile_avatar_url: null,
-    profile_theme: "system",
+    profile_theme: "light",
     profile_must_change_password: input.forcePasswordChange,
   });
 
@@ -460,7 +503,7 @@ export async function updateStaffAction(formData: FormData) {
     profile_email: input.email,
     profile_phone: input.phone,
     profile_avatar_url: null,
-    profile_theme: "system",
+    profile_theme: "light",
     profile_must_change_password: false,
   });
 
@@ -499,6 +542,107 @@ export async function deleteStaffAction(formData: FormData) {
 
   revalidatePath("/app/staff");
   redirect("/app/staff");
+}
+
+export async function createBranchAction(formData: FormData) {
+  const { membership } = await requireTenantContext();
+  assertBusinessScope(formData, membership.businessId);
+  const input = branchSchema.parse(formObject(formData));
+  const dataset = await getTenantDataset(membership);
+
+  if (dataset.branches.length >= dataset.business.branchLimit) {
+    redirect(
+      `/app/branches?error=${encodeURIComponent("Bu paketin şube limiti dolu.")}`,
+    );
+  }
+
+  const admin = createSupabaseAdminClient();
+  const { error } = await admin.rpc("rpc_create_branch", {
+    target_business_id: membership.businessId,
+    branch_name: input.name,
+    branch_phone: input.phone || "",
+    branch_address: input.address || "",
+  });
+
+  if (error) {
+    redirect(`/app/branches?error=${encodeURIComponent(error.message)}`);
+  }
+
+  revalidatePath("/app/branches");
+  revalidatePath("/app/staff");
+  redirect("/app/branches");
+}
+
+export async function updateBranchAction(formData: FormData) {
+  const { membership } = await requireTenantContext();
+  assertBusinessScope(formData, membership.businessId);
+  const input = branchUpdateSchema.parse(formObject(formData));
+  const admin = createSupabaseAdminClient();
+  const { error } = await admin.rpc("rpc_update_branch", {
+    target_business_id: membership.businessId,
+    target_branch_id: input.branchId,
+    branch_name: input.name,
+    branch_phone: input.phone || "",
+    branch_address: input.address || "",
+    target_is_active: input.isActive,
+  });
+
+  if (error) {
+    redirect(`/app/branches?error=${encodeURIComponent(error.message)}`);
+  }
+
+  revalidatePath("/app/branches");
+  revalidatePath("/app/staff");
+  redirect("/app/branches");
+}
+
+export async function deleteBranchAction(formData: FormData) {
+  const { membership } = await requireTenantContext();
+  assertBusinessScope(formData, membership.businessId);
+  const input = deleteEntitySchema.parse({ id: formString(formData, "branchId") });
+  const dataset = await getTenantDataset(membership);
+
+  if (dataset.branches.length <= 1) {
+    redirect(
+      `/app/branches?error=${encodeURIComponent("En az bir aktif şube kalmalı.")}`,
+    );
+  }
+
+  const admin = createSupabaseAdminClient();
+  const { error } = await admin.rpc("rpc_delete_branch", {
+    target_business_id: membership.businessId,
+    target_branch_id: input.id,
+  });
+
+  if (error) {
+    redirect(`/app/branches?error=${encodeURIComponent(error.message)}`);
+  }
+
+  revalidatePath("/app/branches");
+  revalidatePath("/app/staff");
+  redirect("/app/branches");
+}
+
+export async function updateStaffScheduleAction(formData: FormData) {
+  const { membership } = await requireTenantContext();
+  assertBusinessScope(formData, membership.businessId);
+  const input = staffScheduleSchema.parse(formObject(formData));
+  const admin = createSupabaseAdminClient();
+  const { error } = await admin.rpc("rpc_upsert_staff_working_hour", {
+    target_business_id: membership.businessId,
+    target_member_id: input.memberId,
+    schedule_weekday: input.weekday,
+    schedule_starts_at: input.startsAt,
+    schedule_ends_at: input.endsAt,
+    schedule_is_available: input.isAvailable,
+  });
+
+  if (error) {
+    redirect(`/app/staff/schedule?error=${encodeURIComponent(error.message)}`);
+  }
+
+  revalidatePath("/app/staff/schedule");
+  redirect("/app/staff/schedule");
 }
 
 export async function createProductAction(formData: FormData) {
@@ -718,6 +862,8 @@ export async function updateBusinessSettingsAction(formData: FormData) {
     target_business_id: membership.businessId,
     business_name: input.name,
     selected_slot_minutes: input.slotMinutes,
+    business_opens_at: input.opensAt,
+    business_closes_at: input.closesAt,
   });
 
   if (error) {
@@ -725,6 +871,7 @@ export async function updateBusinessSettingsAction(formData: FormData) {
   }
 
   revalidatePath("/app/settings");
+  redirect(`/app/settings?success=${encodeURIComponent("İşletme ayarları güncellendi.")}`);
 }
 
 export async function toggleModuleAction(formData: FormData) {
@@ -744,6 +891,7 @@ export async function toggleModuleAction(formData: FormData) {
 
   revalidatePath("/app/settings");
   revalidatePath("/app");
+  redirect(`/app/settings?success=${encodeURIComponent("Modül durumu güncellendi.")}`);
 }
 
 export async function updateProfileAction(formData: FormData) {
@@ -767,4 +915,5 @@ export async function updateProfileAction(formData: FormData) {
   }
 
   revalidatePath("/app/profile");
+  redirect(`/app/profile?success=${encodeURIComponent("Profil güncellendi.")}`);
 }

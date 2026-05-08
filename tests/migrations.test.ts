@@ -74,5 +74,15 @@ describe("Supabase declarative schema", () => {
     expect(sql).toContain("'businesses'");
     expect(sql).toContain("'subscriptions'");
     expect(sql).toContain("'payments'");
+    expect(sql).toContain("'price_snapshot_cents'");
+  });
+
+  it("keeps subscription prices fixed at the subscription creation amount", () => {
+    const tableSql = readSchemaDir("tables");
+    const functionSql = readSchemaDir("functions");
+
+    expect(tableSql).toContain("price_snapshot_cents integer not null");
+    expect(functionSql).toContain("price_snapshot_cents");
+    expect(functionSql).toContain("p.monthly_price_cents");
   });
 });

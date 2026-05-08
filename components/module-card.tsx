@@ -1,4 +1,5 @@
 import type { ModuleDefinition, ModuleKey } from "@/lib/product-model";
+import { SurfaceCard } from "@/components/surface-card";
 import { cn } from "@/lib/utils";
 
 type ModuleCardProps = {
@@ -11,11 +12,11 @@ export function ModuleCard({ module, activeModules }: ModuleCardProps) {
   const active = activeModules.includes(module.key);
 
   return (
-    <article className="rounded-lg border border-border bg-surface p-4 shadow-sm">
+    <SurfaceCard as="article" className="shadow-sm">
       <div className="flex items-start gap-3">
         <div
           className={cn(
-            "grid size-10 shrink-0 place-items-center rounded-md",
+            "grid size-10 shrink-0 place-items-center rounded-2xl",
             active ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground",
           )}
         >
@@ -40,6 +41,6 @@ export function ModuleCard({ module, activeModules }: ModuleCardProps) {
           </p>
         </div>
       </div>
-    </article>
+    </SurfaceCard>
   );
 }

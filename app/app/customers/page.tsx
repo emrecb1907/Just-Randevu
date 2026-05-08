@@ -22,13 +22,13 @@ export default async function CustomersPage() {
         </div>
         <Link
           href="/app/customers/new"
-          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-bold text-white shadow-sm"
+          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-bold text-white shadow-sm"
         >
           <Plus size={16} />
           Yeni müşteri
         </Link>
       </div>
-      <section className="overflow-hidden rounded-lg border border-border bg-surface">
+      <section className="overflow-hidden rounded-[24px] border border-border bg-surface">
         <div className="hidden grid-cols-[1.2fr_1fr_1fr_0.8fr_56px] border-b border-border bg-muted/50 p-3 text-xs font-semibold text-muted-foreground md:grid">
           <span>Müşteri</span>
           <span>Telefon</span>
@@ -51,7 +51,7 @@ export default async function CustomersPage() {
             </span>
             <Link
               href={`/app/customers/${customer.id}/edit`}
-              className="grid size-10 place-items-center rounded-md border border-border bg-background text-muted-foreground hover:text-foreground"
+              className="grid size-10 place-items-center rounded-xl border border-border bg-background text-muted-foreground hover:text-foreground"
               aria-label={`${customer.name} düzenle`}
             >
               <Pencil size={16} />

@@ -14,7 +14,7 @@ export function StaffDensityBoard({
   const gridTemplateColumns = `88px repeat(${Math.max(visibleStaff.length, 1)}, minmax(140px, 1fr))`;
 
   return (
-    <section className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
+    <section className="overflow-hidden rounded-[24px] border border-border bg-surface shadow-panel">
       <div className="border-b border-border p-4">
         <h2 className="text-lg font-semibold">Admin Doluluk Görünümü</h2>
         <p className="text-sm text-muted-foreground">
@@ -68,7 +68,7 @@ export function StaffDensityBoard({
                     {match ? (
                       <div
                         className={cn(
-                          "rounded-md border border-primary/20 bg-primary/10 p-2 text-xs text-primary",
+                          "rounded-2xl border border-primary/20 bg-primary/10 p-2 text-xs text-primary",
                           match.status === "tamamlandı" &&
                             "border-accent bg-accent/15 text-foreground",
                         )}
@@ -76,11 +76,7 @@ export function StaffDensityBoard({
                         <p className="font-semibold">{match.customer}</p>
                         <p>{match.service}</p>
                       </div>
-                    ) : (
-                      <span className="text-xs text-muted-foreground">
-                        Müsait
-                      </span>
-                    )}
+                    ) : null}
                   </div>
                 );
               })}

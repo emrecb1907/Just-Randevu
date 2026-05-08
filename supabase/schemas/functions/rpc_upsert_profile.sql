@@ -7,7 +7,7 @@ create or replace function public.rpc_upsert_profile(
   profile_email text,
   profile_phone text default null,
   profile_avatar_url text default null,
-  profile_theme text default 'system',
+  profile_theme text default 'light',
   profile_must_change_password boolean default false
 )
 returns uuid

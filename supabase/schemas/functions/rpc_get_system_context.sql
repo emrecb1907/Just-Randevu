@@ -18,6 +18,22 @@ begin
           'phone', b.phone,
           'plan_key', b.plan_key,
           'slot_minutes', b.slot_minutes,
+          'opens_at', coalesce((
+            select bh.opens_at
+            from public.business_hours bh
+            where bh.business_id = b.id
+              and bh.is_closed = false
+            order by bh.weekday asc
+            limit 1
+          ), '09:00'::time),
+          'closes_at', coalesce((
+            select bh.closes_at
+            from public.business_hours bh
+            where bh.business_id = b.id
+              and bh.is_closed = false
+            order by bh.weekday asc
+            limit 1
+          ), '18:00'::time),
           'is_active', b.is_active,
           'created_at', b.created_at,
           'branch_count', coalesce((
@@ -45,7 +61,14 @@ begin
             where s.business_id = b.id
             order by s.created_at desc
             limit 1
-          ), 'pending')
+          ), 'pending'),
+          'subscription_price_snapshot_cents', coalesce((
+            select s.price_snapshot_cents
+            from public.subscriptions s
+            where s.business_id = b.id
+            order by s.created_at desc
+            limit 1
+          ), 0)
         )
         order by b.created_at desc
       )
@@ -68,6 +91,7 @@ begin
           'business_name', b.name,
           'plan_key', s.plan_key,
           'status', s.status,
+          'price_snapshot_cents', s.price_snapshot_cents,
           'current_period_start', s.current_period_start,
           'current_period_end', s.current_period_end,
           'created_at', s.created_at

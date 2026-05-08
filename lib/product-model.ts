@@ -3,6 +3,7 @@ import {
   Bell,
   Boxes,
   Building2,
+  CalendarClock,
   CalendarDays,
   ClipboardCheck,
   CreditCard,
@@ -71,22 +72,22 @@ export const modules: ModuleDefinition[] = [
   },
   {
     key: "staff",
-    name: "Personel Yönetimi",
-    description: "Profil, mesai, izin, geçici şifre ve yetki akışları.",
+    name: "Personel",
+    description: "Ekip profilleri, şube bağlantıları ve yetkiler.",
     category: "core",
     icon: UserCog,
   },
   {
     key: "services",
-    name: "İşlem ve Hizmetler",
-    description: "Süre, fiyat, kategori ve fiyat snapshot altyapısı.",
+    name: "Hizmetler",
+    description: "Randevularda seçilecek hizmet, süre ve fiyat bilgileri.",
     category: "core",
     icon: ClipboardCheck,
   },
   {
     key: "whatsapp",
     name: "WhatsApp Hatırlatma",
-    description: "Meta Cloud API template gönderimleri ve bildirim logları.",
+    description: "WhatsApp hatırlatma mesajları ve gönderim geçmişi.",
     category: "core",
     icon: MessageCircle,
   },
@@ -177,7 +178,7 @@ export const modules: ModuleDefinition[] = [
   {
     key: "package_tracking",
     name: "Paket Satış ve Kullanım",
-    description: "İyzico abonelikleri, plan limitleri ve modül kullanımı.",
+    description: "Paket aboneliği, plan limitleri ve modül kullanımı.",
     category: "premium",
     icon: Bell,
   },
@@ -212,18 +213,48 @@ export const plans = {
   }
 >;
 
+export type NavigationItem = {
+  label: string;
+  href: string;
+  icon: LucideIcon;
+  moduleKey?: ModuleKey;
+};
+
 export const navigation = [
   { label: "Dashboard", href: "/app", icon: LayoutDashboard },
-  { label: "Takvim", href: "/app/calendar", icon: CalendarDays },
-  { label: "Müşteriler", href: "/app/customers", icon: Users },
-  { label: "Personel", href: "/app/staff", icon: UserCog },
-  { label: "İşlemler", href: "/app/services", icon: ClipboardCheck },
-  { label: "Stok", href: "/app/stock", icon: Boxes },
-  { label: "Finans", href: "/app/finance", icon: WalletCards },
+  {
+    label: "Takvim",
+    href: "/app/calendar",
+    icon: CalendarDays,
+    moduleKey: "appointments",
+  },
+  {
+    label: "Vardiya Planı",
+    href: "/app/schedule",
+    icon: CalendarClock,
+    moduleKey: "staff",
+  },
+  {
+    label: "Müşteriler",
+    href: "/app/customers",
+    icon: Users,
+    moduleKey: "customers",
+  },
+  { label: "Personel", href: "/app/staff", icon: UserCog, moduleKey: "staff" },
+  {
+    label: "Hizmetler",
+    href: "/app/services",
+    icon: ClipboardCheck,
+    moduleKey: "services",
+  },
+  { label: "Şubeler", href: "/app/branches", icon: Building2, moduleKey: "multi_branch" },
+  { label: "Stok", href: "/app/stock", icon: Boxes, moduleKey: "stock" },
+  { label: "Finans", href: "/app/finance", icon: WalletCards, moduleKey: "finance" },
   { label: "Ayarlar", href: "/app/settings", icon: Store },
-];
+] satisfies NavigationItem[];
 
 export const systemNavigation = [
   { label: "Sistem Paneli", href: "/app", icon: LayoutDashboard },
   { label: "İşletmeler", href: "/app/super-admin", icon: Building2 },
-];
+  { label: "Paketler", href: "/app/super-admin/plans", icon: PackageCheck },
+] satisfies NavigationItem[];

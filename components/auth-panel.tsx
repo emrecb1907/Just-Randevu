@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 import {
   Apple,
@@ -5,7 +7,6 @@ import {
   BarChart3,
   CalendarDays,
   Check,
-  EyeOff,
   Mail,
   Phone,
   UserRound,
@@ -13,11 +14,16 @@ import {
 
 import { loginAction, registerBusinessAction } from "@/app/actions";
 import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
+import { PasswordField } from "@/components/password-field";
 
 type AuthMode = "login" | "register";
 
 const fieldBase =
-  "mt-2 min-h-11 w-full rounded-md border border-neutral-200 bg-white px-4 text-sm text-[#111111] shadow-[0_1px_0_rgba(17,17,17,0.03)] outline-none transition placeholder:text-neutral-400 focus:border-primary focus:ring-4 focus:ring-primary/10 dark:border-white/10 dark:bg-white/10 dark:text-white";
+  "mt-2 min-h-11 w-full rounded-xl border border-neutral-200 bg-white px-4 text-sm text-[#111111] shadow-[0_1px_0_rgba(17,17,17,0.03)] outline-none transition placeholder:text-neutral-400 focus:border-primary focus:ring-4 focus:ring-primary/10 dark:border-white/10 dark:bg-white/10 dark:text-white";
+const phoneShell =
+  "mt-2 flex min-h-11 overflow-hidden rounded-xl border border-neutral-200 bg-white text-sm text-[#111111] shadow-[0_1px_0_rgba(17,17,17,0.03)] transition focus-within:border-primary focus-within:ring-4 focus-within:ring-primary/10 dark:border-white/10 dark:bg-white/10 dark:text-white";
+const phoneInputClass =
+  "min-w-0 flex-1 bg-transparent px-4 outline-none placeholder:text-neutral-400";
 
 const visualRows = [
   { time: "09:00", title: "Hizmet", staff: "Personel", tone: "blue" },
@@ -25,13 +31,27 @@ const visualRows = [
   { time: "14:30", title: "Görüşme", staff: "Uzman", tone: "yellow" },
 ];
 
+function normalizeVisiblePhone(value: string) {
+  let digits = value.replace(/\D/g, "");
+
+  if (digits.startsWith("90")) {
+    digits = digits.slice(2);
+  }
+
+  if (digits.startsWith("0")) {
+    digits = digits.slice(1);
+  }
+
+  return digits.slice(0, 10);
+}
+
 export function AuthPanel({ mode }: { mode: AuthMode }) {
   const isRegister = mode === "register";
   const formSpacing = isRegister ? "mt-4 space-y-2.5" : "mt-6 space-y-3";
   const dividerSpacing = isRegister ? "my-3" : "my-4";
 
   return (
-    <main className="relative isolate grid min-h-dvh place-items-center overflow-y-auto bg-[#EEF0F2] px-4 py-4 text-[#111111] dark:bg-[#07100B] dark:text-white sm:px-6 lg:h-dvh lg:overflow-hidden lg:p-3 xl:p-4">
+    <main className="relative isolate grid min-h-dvh place-items-center overflow-y-auto bg-[#EEF0F2] px-4 py-4 text-[#111111] dark:bg-[#07100B] dark:text-white sm:px-6 lg:p-3 xl:p-4">
       <div
         className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-80 opacity-80 blur-3xl"
         style={{
@@ -41,14 +61,14 @@ export function AuthPanel({ mode }: { mode: AuthMode }) {
         aria-hidden="true"
       />
 
-      <section className="w-full max-w-7xl rounded-2xl border border-white/70 bg-white/40 p-2 shadow-[0_30px_100px_rgba(17,24,39,0.16)] backdrop-blur-xl dark:border-white/10 dark:bg-white/5 lg:h-[calc(100dvh-1.5rem)] xl:h-[calc(100dvh-2rem)]">
-        <div className="grid h-full min-h-0 overflow-hidden rounded-xl bg-white p-5 dark:bg-[#0B1710] lg:grid-cols-[1fr_1.08fr] lg:gap-4 lg:p-4 xl:gap-5 xl:p-5">
-          <div className="flex min-h-[680px] flex-col px-2 py-4 sm:px-8 lg:h-full lg:min-h-0 lg:px-8 lg:py-2 xl:px-10">
+      <section className="w-full max-w-7xl rounded-2xl border border-white/70 bg-white/40 p-2 shadow-[0_30px_100px_rgba(17,24,39,0.16)] backdrop-blur-xl dark:border-white/10 dark:bg-white/5 lg:min-h-[calc(100dvh-1.5rem)] xl:min-h-[calc(100dvh-2rem)]">
+        <div className="grid overflow-hidden rounded-xl bg-white p-5 dark:bg-[#0B1710] lg:min-h-[calc(100dvh-2.5rem)] lg:grid-cols-[1fr_1.08fr] lg:gap-4 lg:p-4 xl:min-h-[calc(100dvh-3rem)] xl:gap-5 xl:p-5">
+          <div className="flex min-h-[640px] flex-col px-2 py-4 sm:px-8 lg:min-h-0 lg:px-8 lg:py-2 xl:px-10">
             <Link
               href="/"
               className="flex items-center gap-3 text-base font-bold"
             >
-              <span className="grid size-8 place-items-center rounded-md bg-[#111111] text-[11px] font-black text-white dark:bg-white dark:text-[#07100B]">
+              <span className="grid size-8 place-items-center rounded-xl bg-[#111111] text-[11px] font-black text-white dark:bg-white dark:text-[#07100B]">
                 JR
               </span>
               Just Randevu
@@ -125,41 +145,42 @@ export function AuthPanel({ mode }: { mode: AuthMode }) {
                 {isRegister ? (
                   <label className="block text-xs font-bold">
                     Telefon
-                    <div className="relative">
+                    <div className={phoneShell}>
+                      <span className="grid place-items-center border-r border-neutral-200 bg-neutral-50 px-3 text-sm font-black text-neutral-500 dark:border-white/10 dark:bg-white/10 dark:text-white/70">
+                        +90
+                      </span>
                       <input
                         name="phone"
                         type="tel"
+                        inputMode="numeric"
+                        autoComplete="tel"
                         required
-                        className={`${fieldBase} pr-11`}
-                        placeholder="+90 534 343 54 32"
+                        maxLength={16}
+                        pattern="[1-9][0-9]{9}"
+                        title="Telefon numarası 10 haneli olmalı. Örnek: 5321234567"
+                        onInput={(event) => {
+                          const input = event.currentTarget;
+                          input.value = normalizeVisiblePhone(input.value);
+                        }}
+                        className={phoneInputClass}
+                        placeholder="5321234567"
                       />
-                      <Phone
-                        size={18}
-                        className="absolute right-4 top-[calc(50%+4px)] -translate-y-1/2 text-neutral-400"
-                        aria-hidden="true"
-                      />
+                      <span className="grid place-items-center px-3 text-neutral-400">
+                        <Phone size={18} aria-hidden="true" />
+                      </span>
                     </div>
                   </label>
                 ) : null}
 
-                <label className="block text-xs font-bold">
-                  Şifre
-                  <div className="relative">
-                    <input
-                      name="password"
-                      type="password"
-                      required
-                      minLength={isRegister ? 10 : 8}
-                      className={`${fieldBase} pr-11`}
-                      placeholder="••••••••••"
-                    />
-                    <EyeOff
-                      size={18}
-                      className="absolute right-4 top-[calc(50%+4px)] -translate-y-1/2 text-neutral-400"
-                      aria-hidden="true"
-                    />
-                  </div>
-                </label>
+                <PasswordField
+                  name="password"
+                  label="Şifre"
+                  minLength={isRegister ? 10 : 8}
+                  placeholder="••••••••••"
+                  autoComplete={isRegister ? "new-password" : "current-password"}
+                  className="block text-xs font-bold"
+                  inputClassName="rounded-xl border-neutral-200 bg-white px-4 text-[#111111] shadow-[0_1px_0_rgba(17,17,17,0.03)] dark:border-white/10 dark:bg-white/10 dark:text-white"
+                />
 
                 {!isRegister ? (
                   <div className="flex items-center justify-between gap-4 text-xs text-neutral-500 dark:text-neutral-300">
@@ -188,16 +209,16 @@ export function AuthPanel({ mode }: { mode: AuthMode }) {
 
                 {isRegister ? (
                   <ConfirmSubmitButton
-                    className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-primary px-5 text-sm font-bold text-white shadow-[0_14px_30px_rgba(0,139,71,0.28)] transition hover:bg-primary/90"
+                    className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-primary px-5 text-sm font-bold text-white shadow-[0_14px_30px_rgba(0,139,71,0.28)] transition hover:bg-primary/90"
                     title="İşletme kaydı oluşturulsun mu?"
-                    description="İşletme, merkez şube, owner profili ve paket modülleri Supabase üzerinde açılacak."
+                    description="İşletme, merkez şube, yetkili hesabı ve paket modülleri oluşturulacak. Kaydı tamamlayınca panele yönlendirileceksiniz."
                   >
                     İşletmeyi oluştur
                   </ConfirmSubmitButton>
                 ) : (
                   <button
                     type="submit"
-                    className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-primary px-5 text-sm font-bold text-white shadow-[0_14px_30px_rgba(0,139,71,0.28)] transition hover:bg-primary/90"
+                    className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-primary px-5 text-sm font-bold text-white shadow-[0_14px_30px_rgba(0,139,71,0.28)] transition hover:bg-primary/90"
                   >
                     Giriş yap
                     <ArrowRight size={16} />
@@ -216,14 +237,14 @@ export function AuthPanel({ mode }: { mode: AuthMode }) {
               <div className="grid gap-3 sm:grid-cols-2">
                 <button
                   type="button"
-                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-neutral-200 bg-white px-4 text-sm font-semibold shadow-sm transition hover:border-primary dark:border-white/10 dark:bg-white/10"
+                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-neutral-200 bg-white px-4 text-sm font-semibold shadow-sm transition hover:border-primary dark:border-white/10 dark:bg-white/10"
                 >
                   <span className="font-black text-primary">G</span>
                   Google
                 </button>
                 <button
                   type="button"
-                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-neutral-200 bg-white px-4 text-sm font-semibold shadow-sm transition hover:border-primary dark:border-white/10 dark:bg-white/10"
+                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-neutral-200 bg-white px-4 text-sm font-semibold shadow-sm transition hover:border-primary dark:border-white/10 dark:bg-white/10"
                 >
                   <Apple size={17} />
                   Apple
@@ -294,16 +315,16 @@ function AuthVisual({ isRegister }: { isRegister: boolean }) {
               <p className="text-2xl font-black leading-none">Takvim</p>
             </div>
             <div className="flex gap-2">
-              <span className="rounded-md border border-neutral-200 px-3 py-2 text-xs font-bold">
+              <span className="rounded-xl border border-neutral-200 px-3 py-2 text-xs font-bold">
                 Hafta
               </span>
-              <span className="rounded-md bg-primary px-3 py-2 text-xs font-bold text-white">
+              <span className="rounded-xl bg-primary px-3 py-2 text-xs font-bold text-white">
                 Randevu ekle
               </span>
             </div>
           </div>
 
-          <div className="relative min-h-[178px] overflow-hidden rounded-lg border border-neutral-200 bg-white xl:min-h-[198px]">
+          <div className="relative min-h-[178px] overflow-hidden rounded-2xl border border-neutral-200 bg-white xl:min-h-[198px]">
             <div className="grid grid-cols-[68px_repeat(4,1fr)] border-b border-neutral-200 text-center text-xs font-bold text-neutral-500">
               <div className="border-r border-neutral-200 py-2.5" />
               {["Pzt", "Sal", "Çar", "Per"].map((day) => (
@@ -336,10 +357,10 @@ function AuthVisual({ isRegister }: { isRegister: boolean }) {
                 key={row.title}
                 className={
                   row.tone === "blue"
-                    ? "absolute left-[30%] top-[54px] w-[38%] rounded-md border border-sky-200 bg-sky-50 p-2.5 text-sky-900 shadow-sm xl:top-[58px] xl:p-3"
+                    ? "absolute left-[30%] top-[54px] w-[38%] rounded-xl border border-sky-200 bg-sky-50 p-2.5 text-sky-900 shadow-sm xl:top-[58px] xl:p-3"
                     : row.tone === "green"
-                      ? "absolute right-[9%] top-[103px] w-[36%] rounded-md border border-emerald-200 bg-emerald-50 p-2.5 text-emerald-900 shadow-sm xl:top-[110px] xl:p-3"
-                      : "absolute bottom-2 right-[2%] w-[34%] rounded-md border border-accent bg-accent/15 p-2.5 text-[#3D2B00] shadow-sm xl:bottom-3 xl:p-3"
+                      ? "absolute right-[9%] top-[103px] w-[36%] rounded-xl border border-emerald-200 bg-emerald-50 p-2.5 text-emerald-900 shadow-sm xl:top-[110px] xl:p-3"
+                      : "absolute bottom-2 right-[2%] w-[34%] rounded-xl border border-accent bg-accent/15 p-2.5 text-[#3D2B00] shadow-sm xl:bottom-3 xl:p-3"
                 }
               >
                 <p className="text-xs font-black xl:text-sm">{row.title}</p>
@@ -356,7 +377,7 @@ function AuthVisual({ isRegister }: { isRegister: boolean }) {
           </div>
         </div>
 
-        <div className="absolute bottom-2 left-5 grid w-36 gap-1.5 rounded-lg border border-white/35 bg-white/90 p-2.5 text-[#111111] shadow-[0_20px_55px_rgba(0,0,0,0.18)] xl:bottom-3 xl:left-7 xl:w-40 xl:p-3">
+        <div className="absolute bottom-2 left-5 grid w-36 gap-1.5 rounded-2xl border border-white/35 bg-white/90 p-2.5 text-[#111111] shadow-[0_20px_55px_rgba(0,0,0,0.18)] xl:bottom-3 xl:left-7 xl:w-40 xl:p-3">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-neutral-500">Bugün</span>
             <BarChart3 size={16} className="text-primary" />
