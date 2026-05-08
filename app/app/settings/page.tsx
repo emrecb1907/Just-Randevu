@@ -1,3 +1,5 @@
+import { redirect } from "next/navigation";
+
 import {
   toggleModuleAction,
   updateBusinessSettingsAction,
@@ -7,10 +9,16 @@ import { SurfaceCard } from "@/components/surface-card";
 import { getTenantDataset, requireTenantContext } from "@/lib/app-data";
 import { plannedModules, plans, readyModules } from "@/lib/product-model";
 import type { ModuleKey } from "@/lib/product-model";
+import { canManageMembership } from "@/lib/roles";
 import { cn, formatCurrency } from "@/lib/utils";
 
 export default async function SettingsPage() {
   const { membership } = await requireTenantContext();
+
+  if (!canManageMembership(membership)) {
+    redirect("/app/calendar");
+  }
+
   const { business, activeModules } = await getTenantDataset(membership);
   const includedModules: ModuleKey[] = plans[business.plan].includedModules;
 
@@ -21,9 +29,6 @@ export default async function SettingsPage() {
         <h1 className="text-2xl font-semibold tracking-normal md:text-3xl">
           İşletme Profili
         </h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          İşletme bilgilerini, çalışma saatlerini ve paket kapsamını yönetin.
-        </p>
       </div>
       <div className="grid gap-4 xl:grid-cols-[1fr_0.72fr]">
         <form

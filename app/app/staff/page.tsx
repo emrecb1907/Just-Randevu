@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { Pencil, Plus } from "lucide-react";
+import { redirect } from "next/navigation";
 
 import { getTenantDataset, requireTenantContext } from "@/lib/app-data";
+import { canManageMembership } from "@/lib/roles";
 import { formatCurrency } from "@/lib/utils";
 
 const roleLabel = {
@@ -13,6 +15,11 @@ const roleLabel = {
 
 export default async function StaffPage() {
   const { membership } = await requireTenantContext();
+
+  if (!canManageMembership(membership)) {
+    redirect("/app/calendar");
+  }
+
   const { staffMembers } = await getTenantDataset(membership);
 
   return (
@@ -23,9 +30,6 @@ export default async function StaffPage() {
           <h1 className="text-2xl font-semibold tracking-normal md:text-3xl">
             Personel Listesi
           </h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Personellerin şube, rol ve performans özetlerini buradan takip edin.
-          </p>
         </div>
         <Link
           href="/app/staff/new"

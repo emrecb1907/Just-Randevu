@@ -4,6 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import { deleteProductAction, updateProductAction } from "@/app/actions";
 import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
 import { getTenantDataset, requireTenantContext } from "@/lib/app-data";
+import { canManageMembership } from "@/lib/roles";
 
 type EditStockPageProps = {
   params: Promise<{
@@ -14,6 +15,11 @@ type EditStockPageProps = {
 export default async function EditStockPage({ params }: EditStockPageProps) {
   const { productId } = await params;
   const { membership } = await requireTenantContext();
+
+  if (!canManageMembership(membership)) {
+    redirect("/app/calendar");
+  }
+
   const { business, stockItems, activeModules } = await getTenantDataset(membership);
   const item = stockItems.find((product) => product.id === productId);
 
@@ -32,9 +38,6 @@ export default async function EditStockPage({ params }: EditStockPageProps) {
         <h1 className="text-2xl font-semibold tracking-normal md:text-3xl">
           {item.name}
         </h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Stok miktarı hareketlerden hesaplanır; burada kart bilgileri değişir.
-        </p>
       </div>
       <form action={updateProductAction} className="grid gap-4 rounded-[24px] border border-border bg-surface p-4 md:grid-cols-2">
         <input type="hidden" name="businessId" value={business.id} />

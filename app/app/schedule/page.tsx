@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { CalendarClock, ChevronLeft, ChevronRight } from "lucide-react";
+import { redirect } from "next/navigation";
 
 import { TimelineGrid, type TimelineEvent } from "@/components/timeline-grid";
 import { getTenantDataset, requireTenantContext } from "@/lib/app-data";
+import { canManageMembership } from "@/lib/roles";
 
 type SchedulePageProps = {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
@@ -13,7 +15,10 @@ function firstParam(value: string | string[] | undefined) {
 }
 
 function formatDateKey(date: Date) {
-  return date.toISOString().slice(0, 10);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 function addDays(date: Date, days: number) {
@@ -31,6 +36,11 @@ function addMinutes(time: string, minutes: number) {
 
 export default async function SchedulePage({ searchParams }: SchedulePageProps) {
   const { membership } = await requireTenantContext();
+
+  if (!canManageMembership(membership)) {
+    redirect("/app/calendar");
+  }
+
   const { business, staffMembers, appointments, businessHours } =
     await getTenantDataset(membership);
   const params = searchParams ? await searchParams : {};
@@ -61,8 +71,16 @@ export default async function SchedulePage({ searchParams }: SchedulePageProps) 
     endsAt: addMinutes(appointment.start, appointment.durationMinutes),
     title: appointment.customer,
     meta: `${appointment.service} · ${appointment.durationMinutes} dk`,
+    details: [
+      { label: "Saat", value: `${appointment.start} - ${addMinutes(appointment.start, appointment.durationMinutes)}` },
+      { label: "Müşteri", value: appointment.customer },
+      { label: "Hizmet", value: appointment.service },
+      { label: "Personel", value: appointment.staffName },
+      { label: "Telefon", value: appointment.phone },
+    ],
     tone: "red",
     href: `/app/calendar/${appointment.id}/edit`,
+    actionLabel: "Detaya git",
   }));
   const readableDate = validDate.toLocaleDateString("tr-TR", {
     weekday: "long",
@@ -79,21 +97,17 @@ export default async function SchedulePage({ searchParams }: SchedulePageProps) 
           <h1 className="text-2xl font-semibold tracking-normal md:text-3xl">
             Personel Doluluk Takvimi
           </h1>
-          <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-            Seçili günde personel doluluğunu görün; boş saatlerden randevu
-            başlatın.
-          </p>
         </div>
       </div>
 
-      <section className="rounded-[24px] border border-border bg-surface p-4 shadow-panel lg:p-5">
-        <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+      <section className="rounded-[22px] border border-border bg-surface p-3 shadow-panel">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex items-center gap-3">
-            <div className="grid size-11 place-items-center rounded-2xl bg-primary/10 text-primary">
-              <CalendarClock size={20} />
+            <div className="grid size-10 place-items-center rounded-xl bg-primary/10 text-primary">
+              <CalendarClock size={18} />
             </div>
             <div>
-              <h2 className="text-lg font-semibold capitalize">{readableDate}</h2>
+              <h2 className="text-base font-semibold capitalize">{readableDate}</h2>
               <p className="text-sm text-muted-foreground">
                 {opensAt} - {closesAt} · {staffMembers.length} personel
               </p>
@@ -102,20 +116,20 @@ export default async function SchedulePage({ searchParams }: SchedulePageProps) 
           <div className="flex flex-wrap items-center gap-2">
             <Link
               href={`/app/schedule?date=${formatDateKey(addDays(validDate, -1))}`}
-              className="grid min-h-11 min-w-11 place-items-center rounded-xl border border-border bg-background text-muted-foreground"
+              className="grid min-h-10 min-w-10 place-items-center rounded-xl border border-border bg-background text-muted-foreground"
               aria-label="Önceki gün"
             >
               <ChevronLeft size={18} />
             </Link>
             <Link
               href="/app/schedule"
-              className="inline-flex min-h-11 items-center rounded-xl border border-border bg-background px-4 text-sm font-semibold"
+              className="inline-flex min-h-10 items-center rounded-xl border border-border bg-background px-3 text-sm font-semibold"
             >
               Bugün
             </Link>
             <Link
               href={`/app/schedule?date=${formatDateKey(addDays(validDate, 1))}`}
-              className="grid min-h-11 min-w-11 place-items-center rounded-xl border border-border bg-background text-muted-foreground"
+              className="grid min-h-10 min-w-10 place-items-center rounded-xl border border-border bg-background text-muted-foreground"
               aria-label="Sonraki gün"
             >
               <ChevronRight size={18} />

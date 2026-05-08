@@ -19,10 +19,31 @@ as $$
 declare
   service_row public.services%rowtype;
   day_hours public.business_hours%rowtype;
+  actor_member record;
   created_appointment_id uuid;
   appointment_start_local timestamp;
   appointment_end_local timestamp;
 begin
+  select bm.id, bm.role, bm.branch_id
+  into actor_member
+  from public.business_members bm
+  where bm.business_id = target_business_id
+    and bm.profile_id = actor_profile_id
+    and bm.is_active = true
+  limit 1;
+
+  if actor_member.id is null then
+    raise exception 'Bu işletmede işlem yetkiniz yok.';
+  end if;
+
+  if actor_member.role = 'staff'
+    and (
+      target_staff_member_id <> actor_member.id
+      or target_branch_id is distinct from actor_member.branch_id
+    ) then
+    raise exception 'Personel sadece kendi adına ve bağlı olduğu şubede randevu oluşturabilir.';
+  end if;
+
   if not exists (
     select 1 from public.branches
     where id = target_branch_id
@@ -45,6 +66,7 @@ begin
     select 1 from public.business_members
     where id = target_staff_member_id
       and business_id = target_business_id
+      and branch_id = target_branch_id
       and is_active = true
   ) then
     raise exception 'Personel kaydı bulunamadı.';

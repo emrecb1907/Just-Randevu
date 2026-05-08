@@ -26,6 +26,7 @@ export default async function DashboardLayout({
       currentUserEmail={context.profile.email}
       isSuperAdmin={context.isSuperAdmin}
       activeModules={activeModules}
+      role={context.tenantMembership?.role}
     >
       {children}
     </AppShell>

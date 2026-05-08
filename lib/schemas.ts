@@ -60,12 +60,16 @@ export const requiredKvkkConsentSchema = z.preprocess(
 
 export const appointmentStatusSchema = z.enum([
   "bekliyor",
-  "onaylandı",
   "geldi",
-  "tamamlandı",
   "iptal",
   "gelmedi",
+  "tamamlandı",
 ]);
+
+export const appointmentStatusUpdateSchema = z.object({
+  appointmentId: z.string().uuid(),
+  status: appointmentStatusSchema,
+});
 
 export const moduleKeySchema = z.enum([
   "appointments",
@@ -163,7 +167,6 @@ export const customerSchema = z.object({
 
 export const serviceSchema = z.object({
   name: z.string().min(2).max(100),
-  category: z.string().min(2).max(80),
   durationMinutes: z.coerce.number().int().positive().max(600),
   defaultPriceCents: moneyCentsSchema,
   isActive: z.preprocess(

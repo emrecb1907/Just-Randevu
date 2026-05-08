@@ -1,9 +1,10 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 
 import { deleteServiceAction, updateServiceAction } from "@/app/actions";
 import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
 import { getTenantDataset, requireTenantContext } from "@/lib/app-data";
+import { canManageMembership } from "@/lib/roles";
 
 type EditServicePageProps = {
   params: Promise<{
@@ -14,6 +15,11 @@ type EditServicePageProps = {
 export default async function EditServicePage({ params }: EditServicePageProps) {
   const { serviceId } = await params;
   const { membership } = await requireTenantContext();
+
+  if (!canManageMembership(membership)) {
+    redirect("/app/calendar");
+  }
+
   const { business, services } = await getTenantDataset(membership);
   const service = services.find((item) => item.id === serviceId);
 
@@ -28,9 +34,6 @@ export default async function EditServicePage({ params }: EditServicePageProps) 
         <h1 className="text-2xl font-semibold tracking-normal md:text-3xl">
           {service.name}
         </h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Güncel süre ve fiyat yalnızca yeni randevularda kullanılır.
-        </p>
       </div>
       <form
         action={updateServiceAction}
@@ -39,23 +42,13 @@ export default async function EditServicePage({ params }: EditServicePageProps) 
         <input type="hidden" name="businessId" value={business.id} />
         <input type="hidden" name="serviceId" value={service.id} />
         <input type="hidden" name="isActive" value="true" />
-        <label className="text-sm font-medium">
+        <label className="text-sm font-medium md:col-span-2">
           Hizmet adı
           <input
             name="name"
             required
             minLength={2}
             defaultValue={service.name}
-            className="mt-2 min-h-11 w-full rounded-xl border border-border bg-background px-3"
-          />
-        </label>
-        <label className="text-sm font-medium">
-          Kategori
-          <input
-            name="category"
-            required
-            minLength={2}
-            defaultValue={service.category}
             className="mt-2 min-h-11 w-full rounded-xl border border-border bg-background px-3"
           />
         </label>

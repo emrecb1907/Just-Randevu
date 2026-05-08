@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 
 import type { ModuleKey, PlanKey, RoleKey } from "@/lib/product-model";
 import { modules, plans } from "@/lib/product-model";
+import { isStaffMembership } from "@/lib/roles";
 import {
   createServerSupabaseClient,
   createSupabaseAdminClient,
@@ -70,6 +71,7 @@ export type StaffMemberWithProfile = {
 export type CustomerItem = {
   id: string;
   branchId: string;
+  createdBy: string;
   firstName: string;
   lastName: string;
   name: string;
@@ -87,7 +89,6 @@ export type ServiceItem = {
   name: string;
   duration: number;
   priceCents: number;
-  category: string;
   isActive: boolean;
 };
 
@@ -104,6 +105,7 @@ export type StockItem = {
 export type FinanceRow = {
   id: string;
   branchId: string;
+  appointmentId: string;
   type: "gelir" | "gider";
   category: string;
   amountCents: number;
@@ -180,6 +182,7 @@ export type UserProfile = {
 
 export type MembershipContext = {
   memberId: string;
+  profileId: string;
   businessId: string;
   branchId: string;
   role: RoleKey;
@@ -443,6 +446,7 @@ export async function getCurrentUserContext(): Promise<UserContext | null> {
   const profileRow = asRecord(root.profile);
   const memberships = asArray(root.memberships).map((membership) => ({
     memberId: asString(membership.member_id),
+    profileId: asString(membership.profile_id),
     businessId: asString(membership.business_id),
     branchId: asString(membership.branch_id),
     role: asRoleKey(membership.role),
@@ -567,6 +571,9 @@ export async function getTenantDataset(
       address: asString(branch.address),
       isActive: asBoolean(branch.is_active, true),
     }));
+    const visibleBranches = isStaffMembership(membership)
+      ? branches.filter((branch) => branch.id === membership.branchId)
+      : branches;
 
     const appointments: Appointment[] = asArray(root.appointments).map(
       (appointment, index) => {
@@ -646,7 +653,6 @@ export async function getTenantDataset(
       name: asString(service.name),
       duration: asNumber(service.duration_minutes),
       priceCents: asNumber(service.default_price_cents),
-      category: asString(service.category),
       isActive: asBoolean(service.is_active, true),
     }));
 
@@ -660,6 +666,7 @@ export async function getTenantDataset(
       return {
         id: customerId,
         branchId: asString(customer.branch_id),
+        createdBy: asString(customer.created_by),
         firstName: asString(customer.first_name),
         lastName: asString(customer.last_name),
         name: `${asString(customer.first_name)} ${asString(customer.last_name)}`.trim(),
@@ -672,6 +679,7 @@ export async function getTenantDataset(
         status: latestAppointment?.status ?? "aktif",
       };
     });
+    const visibleCustomers = customers;
 
     const stockItems = asArray(root.products).map((product) => {
       const stock = asNumber(product.stock);
@@ -689,6 +697,7 @@ export async function getTenantDataset(
     const financeRows = asArray(root.income_expenses).map((entry) => ({
       id: asString(entry.id),
       branchId: asString(entry.branch_id),
+      appointmentId: asString(entry.appointment_id),
       type: asString(entry.type, "gelir") as "gelir" | "gider",
       category: asString(entry.category),
       amountCents: asNumber(entry.amount_cents),
@@ -697,7 +706,24 @@ export async function getTenantDataset(
       note: asString(entry.note),
     }));
 
-    const staffIds = staffMembers.map((member) => member.id);
+    const visibleAppointments = isStaffMembership(membership)
+      ? appointments.filter(
+          (appointment) => appointment.staffId === membership.memberId,
+        )
+      : appointments;
+    const visibleStaffMembers = isStaffMembership(membership)
+      ? staffMembers.filter((member) => member.id === membership.memberId)
+      : staffMembers;
+    const visibleAppointmentIds = new Set(
+      visibleAppointments.map((appointment) => appointment.id),
+    );
+    const visibleFinanceRows = isStaffMembership(membership)
+      ? financeRows.filter(
+          (row) => row.appointmentId && visibleAppointmentIds.has(row.appointmentId),
+        )
+      : financeRows;
+
+    const staffIds = visibleStaffMembers.map((member) => member.id);
     const { data: workingHoursRows } = staffIds.length
       ? await supabase
           .from("staff_working_hours")
@@ -714,13 +740,13 @@ export async function getTenantDataset(
     }));
 
     const now = new Date();
-    const dailyRevenueCents = financeRows
+    const dailyRevenueCents = visibleFinanceRows
       .filter((row) => row.type === "gelir" && sameDay(row.occurredAt, now))
       .reduce((total, row) => total + row.amountCents, 0);
-    const monthlyRevenueCents = financeRows
+    const monthlyRevenueCents = visibleFinanceRows
       .filter((row) => row.type === "gelir" && sameMonth(row.occurredAt, now))
       .reduce((total, row) => total + row.amountCents, 0);
-    const expensesCents = financeRows
+    const expensesCents = visibleFinanceRows
       .filter((row) => row.type === "gider" && sameMonth(row.occurredAt, now))
       .reduce((total, row) => total + row.amountCents, 0);
 
@@ -741,13 +767,13 @@ export async function getTenantDataset(
         closesAt: firstOpenDay?.closesAt ?? "18:00",
         activeModules,
       },
-      branches,
-      staffMembers,
-      appointments,
-      customers,
+      branches: visibleBranches,
+      staffMembers: visibleStaffMembers,
+      appointments: visibleAppointments,
+      customers: visibleCustomers,
       services,
       stockItems,
-      financeRows,
+      financeRows: visibleFinanceRows,
       financeSummary: {
         dailyRevenueCents,
         monthlyRevenueCents,

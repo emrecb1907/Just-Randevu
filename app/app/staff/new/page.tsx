@@ -1,13 +1,21 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
 import { createStaffAction } from "@/app/actions";
 import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
 import { PasswordField } from "@/components/password-field";
 import { PhoneInput } from "@/components/phone-input";
+import { Select } from "@/components/ui/select";
 import { getTenantDataset, requireTenantContext } from "@/lib/app-data";
+import { canManageMembership } from "@/lib/roles";
 
 export default async function NewStaffPage() {
   const { membership } = await requireTenantContext();
+
+  if (!canManageMembership(membership)) {
+    redirect("/app/calendar");
+  }
+
   const { business, branches } = await getTenantDataset(membership);
 
   return (
@@ -17,10 +25,6 @@ export default async function NewStaffPage() {
         <h1 className="text-2xl font-semibold tracking-normal md:text-3xl">
           Personel Hesabı Aç
         </h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Personel kaydı seçilen şubeye bağlanır; şube ayrı bir kayıt olarak
-          Şubeler ekranından yönetilir.
-        </p>
       </div>
       <form
         action={createStaffAction}
@@ -43,23 +47,29 @@ export default async function NewStaffPage() {
         <PhoneInput />
         <label className="text-sm font-medium">
           Şube
-          <select name="branchId" required className="mt-2 min-h-11 w-full rounded-xl border border-border bg-background px-3">
-            {branches.map((branch) => (
-              <option key={branch.id} value={branch.id}>
-                {branch.name}
-              </option>
-            ))}
-          </select>
+          <Select
+            name="branchId"
+            required
+            placeholder="Şube seçiniz"
+            options={branches.map((branch) => ({
+              value: branch.id,
+              label: branch.name,
+            }))}
+          />
           <span className="mt-1 block text-xs text-muted-foreground">
             Personel bu şubenin takviminde ve vardiya planında görünür.
           </span>
         </label>
         <label className="text-sm font-medium">
           Rol
-          <select name="role" className="mt-2 min-h-11 w-full rounded-xl border border-border bg-background px-3" defaultValue="staff">
-            <option value="staff">Personel</option>
-            <option value="admin">Yönetici</option>
-          </select>
+          <Select
+            name="role"
+            placeholder="Rol seçiniz"
+            options={[
+              { value: "staff", label: "Personel" },
+              { value: "admin", label: "Yönetici" },
+            ]}
+          />
         </label>
         <PasswordField name="temporaryPassword" label="Geçici şifre" autoComplete="new-password" />
         <div className="flex items-end justify-end gap-2">

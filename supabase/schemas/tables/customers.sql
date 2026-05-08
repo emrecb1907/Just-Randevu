@@ -11,6 +11,7 @@ create table public.customers (
   notes text,
   kvkk_consent boolean not null default false,
   whatsapp_consent boolean not null default false,
+  created_by uuid references public.profiles(id),
   is_active boolean not null default true,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),

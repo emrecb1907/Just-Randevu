@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Building2, CreditCard, Pencil, Plus, Search } from "lucide-react";
 
 import { getSystemDataset, requireSuperAdminContext } from "@/lib/app-data";
+import { subscriptionStatusLabel } from "@/lib/status-labels";
 import { formatCurrency } from "@/lib/utils";
 
 type SuperAdminPageProps = {
@@ -42,10 +43,6 @@ export default async function SuperAdminPage({
           <h1 className="text-2xl font-semibold tracking-normal md:text-3xl">
             İşletmeler
           </h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            İşletmeleri arayın, paketlerini görün, profillerine ve düzenleme
-            akışlarına geçin.
-          </p>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row">
           <Link
@@ -107,7 +104,7 @@ export default async function SuperAdminPage({
                 </p>
               </div>
               <span>{business.plan === "premium" ? "Premium" : "Standart"}</span>
-              <span>{business.subscriptionStatus}</span>
+              <span>{subscriptionStatusLabel(business.subscriptionStatus)}</span>
               <span>{formatCurrency(business.subscriptionPriceCents)}</span>
               <span>
                 {business.branchCount} şube · {business.memberCount} kullanıcı ·{" "}

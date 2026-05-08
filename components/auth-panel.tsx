@@ -18,6 +18,7 @@ import {
 
 import { loginAction, registerBusinessAction } from "@/app/actions";
 import { PasswordField } from "@/components/password-field";
+import { Select } from "@/components/ui/select";
 import { plans } from "@/lib/product-model";
 import type { PlanKey } from "@/lib/product-model";
 import { formatCurrency } from "@/lib/utils";
@@ -353,21 +354,19 @@ export function AuthPanel({ mode }: { mode: AuthMode }) {
                         <label className="block text-xs font-bold">
                           Açılış saati
                           <div className="relative">
-                            <select
+                            <Select
                               name="opensAt"
                               required
                               defaultValue="09:00"
-                              className={`${fieldBase} appearance-none pr-11`}
-                            >
-                              {timeOptions.map((time) => (
-                                <option key={`open-${time}`} value={time}>
-                                  {time}
-                                </option>
-                              ))}
-                            </select>
+                              options={timeOptions.map((time) => ({
+                                value: time,
+                                label: time,
+                              }))}
+                              triggerClassName={`${fieldBase} pr-11`}
+                            />
                             <Clock3
                               size={18}
-                              className="absolute right-4 top-[calc(50%+4px)] -translate-y-1/2 text-neutral-400"
+                              className="absolute right-10 top-[calc(50%+4px)] -translate-y-1/2 text-neutral-400"
                               aria-hidden="true"
                             />
                           </div>
@@ -376,21 +375,19 @@ export function AuthPanel({ mode }: { mode: AuthMode }) {
                         <label className="block text-xs font-bold">
                           Kapanış saati
                           <div className="relative">
-                            <select
+                            <Select
                               name="closesAt"
                               required
                               defaultValue="18:00"
-                              className={`${fieldBase} appearance-none pr-11`}
-                            >
-                              {timeOptions.map((time) => (
-                                <option key={`close-${time}`} value={time}>
-                                  {time}
-                                </option>
-                              ))}
-                            </select>
+                              options={timeOptions.map((time) => ({
+                                value: time,
+                                label: time,
+                              }))}
+                              triggerClassName={`${fieldBase} pr-11`}
+                            />
                             <Clock3
                               size={18}
-                              className="absolute right-4 top-[calc(50%+4px)] -translate-y-1/2 text-neutral-400"
+                              className="absolute right-10 top-[calc(50%+4px)] -translate-y-1/2 text-neutral-400"
                               aria-hidden="true"
                             />
                           </div>

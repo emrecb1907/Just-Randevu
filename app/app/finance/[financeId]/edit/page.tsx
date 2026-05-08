@@ -3,7 +3,9 @@ import { notFound, redirect } from "next/navigation";
 
 import { deleteIncomeExpenseAction, updateIncomeExpenseAction } from "@/app/actions";
 import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
+import { Select } from "@/components/ui/select";
 import { getTenantDataset, requireTenantContext } from "@/lib/app-data";
+import { canManageMembership } from "@/lib/roles";
 
 type EditFinancePageProps = {
   params: Promise<{
@@ -26,6 +28,11 @@ function toDateTimeLocal(value: string) {
 export default async function EditFinancePage({ params }: EditFinancePageProps) {
   const { financeId } = await params;
   const { membership } = await requireTenantContext();
+
+  if (!canManageMembership(membership)) {
+    redirect("/app/finance");
+  }
+
   const { business, branches, financeRows, activeModules } = await getTenantDataset(membership);
   const entry = financeRows.find((row) => row.id === financeId);
   const primaryBranch = branches[0];
@@ -45,18 +52,48 @@ export default async function EditFinancePage({ params }: EditFinancePageProps) 
         <h1 className="text-2xl font-semibold tracking-normal md:text-3xl">
           {entry.category}
         </h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Gelir-gider hareketinin tutarını, tarihini ve açıklamasını düzenleyin.
-        </p>
       </div>
       <form action={updateIncomeExpenseAction} className="grid gap-4 rounded-[24px] border border-border bg-surface p-4 md:grid-cols-2">
         <input type="hidden" name="businessId" value={business.id} />
         <input type="hidden" name="financeId" value={entry.id} />
-        <label className="text-sm font-medium">Şube<select name="branchId" defaultValue={entry.branchId || primaryBranch?.id} className="mt-2 min-h-11 w-full rounded-xl border border-border bg-background px-3">{branches.map((branch) => (<option key={branch.id} value={branch.id}>{branch.name}</option>))}</select></label>
-        <label className="text-sm font-medium">Tip<select name="type" defaultValue={entry.type} className="mt-2 min-h-11 w-full rounded-xl border border-border bg-background px-3"><option value="gelir">Gelir</option><option value="gider">Gider</option></select></label>
+        <label className="text-sm font-medium">
+          Şube
+          <Select
+            name="branchId"
+            defaultValue={entry.branchId || primaryBranch?.id}
+            options={branches.map((branch) => ({
+              value: branch.id,
+              label: branch.name,
+            }))}
+          />
+        </label>
+        <label className="text-sm font-medium">
+          Tip
+          <Select
+            name="type"
+            defaultValue={entry.type}
+            options={[
+              { value: "gelir", label: "Gelir" },
+              { value: "gider", label: "Gider" },
+            ]}
+          />
+        </label>
         <label className="text-sm font-medium">Kategori<input name="category" required minLength={2} defaultValue={entry.category} className="mt-2 min-h-11 w-full rounded-xl border border-border bg-background px-3" /></label>
         <label className="text-sm font-medium">Tutar<input name="amountCents" required inputMode="decimal" defaultValue={entry.amountCents / 100} className="mt-2 min-h-11 w-full rounded-xl border border-border bg-background px-3" /></label>
-        <label className="text-sm font-medium">Kaynak<select name="source" defaultValue={entry.source} className="mt-2 min-h-11 w-full rounded-xl border border-border bg-background px-3"><option value="manual">Manuel</option><option value="appointment">Randevu</option><option value="ticket">Adisyon</option><option value="stock">Stok</option><option value="commission">Prim</option></select></label>
+        <label className="text-sm font-medium">
+          Kaynak
+          <Select
+            name="source"
+            defaultValue={entry.source}
+            options={[
+              { value: "manual", label: "Manuel" },
+              { value: "appointment", label: "Randevu" },
+              { value: "ticket", label: "Adisyon" },
+              { value: "stock", label: "Stok" },
+              { value: "commission", label: "Prim" },
+            ]}
+          />
+        </label>
         <label className="text-sm font-medium">Tarih<input name="occurredAt" type="datetime-local" required defaultValue={toDateTimeLocal(entry.occurredAt)} className="mt-2 min-h-11 w-full rounded-xl border border-border bg-background px-3" /></label>
         <label className="text-sm font-medium md:col-span-2">Not<input name="note" maxLength={500} defaultValue={entry.note} className="mt-2 min-h-11 w-full rounded-xl border border-border bg-background px-3" /></label>
         <div className="flex items-end justify-end gap-2 md:col-span-2">

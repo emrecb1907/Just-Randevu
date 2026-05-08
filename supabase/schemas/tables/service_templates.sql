@@ -4,7 +4,6 @@ create table public.service_templates (
   id uuid primary key default gen_random_uuid(),
   sector text not null,
   name text not null,
-  category text not null,
   duration_minutes integer not null check (duration_minutes > 0),
   suggested_price_cents integer not null default 0 check (suggested_price_cents >= 0),
   unique (sector, name)

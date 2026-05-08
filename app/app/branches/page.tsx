@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { Building2, Pencil, Plus } from "lucide-react";
+import { redirect } from "next/navigation";
 
 import { SurfaceCard } from "@/components/surface-card";
 import { getTenantDataset, requireTenantContext } from "@/lib/app-data";
+import { canManageMembership } from "@/lib/roles";
 
 type BranchesPageProps = {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
@@ -14,6 +16,11 @@ function firstParam(value: string | string[] | undefined) {
 
 export default async function BranchesPage({ searchParams }: BranchesPageProps) {
   const { membership } = await requireTenantContext();
+
+  if (!canManageMembership(membership)) {
+    redirect("/app/calendar");
+  }
+
   const { business, branches, staffMembers } = await getTenantDataset(membership);
   const params = searchParams ? await searchParams : {};
   const error = firstParam(params.error);
@@ -27,10 +34,6 @@ export default async function BranchesPage({ searchParams }: BranchesPageProps) 
           <h1 className="text-2xl font-semibold tracking-normal md:text-3xl">
             Şubeler
           </h1>
-          <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-            Personel bir şubeye bağlı çalışır. Çoklu şube paketinde yeni şube
-            açabilir, personel ve randevu formlarında şubeyi seçebilirsiniz.
-          </p>
         </div>
         {canAddBranch ? (
           <Link

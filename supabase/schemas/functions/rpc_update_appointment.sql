@@ -25,12 +25,26 @@ declare
   old_service_name text;
   old_duration_minutes integer;
   old_price_cents integer;
+  actor_member record;
   effective_service_name text;
   effective_duration_minutes integer;
   effective_price_cents integer;
   appointment_start_local timestamp;
   appointment_end_local timestamp;
 begin
+  select bm.id, bm.role, bm.branch_id
+  into actor_member
+  from public.business_members bm
+  where bm.business_id = target_business_id
+    and bm.profile_id = actor_profile_id
+    and bm.is_active = true
+  limit 1;
+
+  if actor_member.id is null
+    or actor_member.role not in ('business_owner', 'admin') then
+    raise exception 'Randevu düzenleme yetkiniz yok.';
+  end if;
+
   select status
   into old_status
   from public.appointments
@@ -39,6 +53,17 @@ begin
 
   if old_status is null then
     raise exception 'Randevu kaydı bulunamadı.';
+  end if;
+
+  if not exists (
+    select 1
+    from public.business_members bm
+    where bm.id = target_staff_member_id
+      and bm.business_id = target_business_id
+      and bm.branch_id = target_branch_id
+      and bm.is_active = true
+  ) then
+    raise exception 'Personel kaydı seçilen şubede bulunamadı.';
   end if;
 
   select

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { AlertCircle, Check, Clock3, Lock, Plus, Search } from "lucide-react";
 
 import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
+import { Select } from "@/components/ui/select";
 import type {
   Appointment,
   BranchOption,
@@ -13,16 +14,13 @@ import type {
   ServiceItem,
   StaffMemberWithProfile,
 } from "@/lib/app-data";
+import {
+  appointmentStatusLabel,
+  appointmentStatusOptions,
+  normalizeAppointmentFormStatus,
+  type AppointmentFormStatus,
+} from "@/lib/status-labels";
 import { formatCurrency } from "@/lib/utils";
-
-const appointmentStatuses = [
-  "bekliyor",
-  "onaylandı",
-  "geldi",
-  "tamamlandı",
-  "iptal",
-  "gelmedi",
-] as const;
 
 const customerResultLimit = 8;
 
@@ -42,9 +40,10 @@ type AppointmentFormProps = {
   defaultStaffId?: string | undefined;
   defaultServiceId?: string | undefined;
   defaultStartsAt?: string | undefined;
-  defaultStatus?: (typeof appointmentStatuses)[number];
+  defaultStatus?: string;
   defaultNote?: string;
   appointmentId?: string;
+  assignmentLocked?: boolean;
   action: (formData: FormData) => void | Promise<void>;
 };
 
@@ -153,22 +152,48 @@ export function AppointmentForm({
   defaultStatus = "bekliyor",
   defaultNote = "",
   appointmentId,
+  assignmentLocked = false,
   action,
 }: AppointmentFormProps) {
+  const safeDefaultStatus: AppointmentFormStatus =
+    normalizeAppointmentFormStatus(defaultStatus);
+  const isCreating = mode === "create";
   const normalizedDefault = parseQueryLikeDate(defaultStartsAt);
   const defaultParts = toLocalParts(normalizedDefault);
   const defaultCustomer = defaultCustomerId
     ? customers.find((customer) => customer.id === defaultCustomerId)
     : undefined;
-  const [branchId, setBranchId] = useState(defaultBranchId ?? branches[0]?.id ?? "");
+  const [branchId, setBranchId] = useState(
+    assignmentLocked
+      ? (defaultBranchId ?? branches[0]?.id ?? "")
+      : isCreating
+        ? ""
+        : (defaultBranchId ?? branches[0]?.id ?? ""),
+  );
   const [customerId, setCustomerId] = useState(defaultCustomer?.id ?? "");
   const [customerQuery, setCustomerQuery] = useState(
     defaultCustomer ? `${defaultCustomer.name} ${defaultCustomer.phone}` : "",
   );
-  const [staffId, setStaffId] = useState(defaultStaffId ?? staffMembers[0]?.id ?? "");
-  const [serviceId, setServiceId] = useState(defaultServiceId ?? services[0]?.id ?? "");
-  const [selectedDate, setSelectedDate] = useState(defaultParts.date);
-  const [selectedTime, setSelectedTime] = useState(defaultParts.time);
+  const [customerResultsOpen, setCustomerResultsOpen] = useState(false);
+  const [staffId, setStaffId] = useState(
+    assignmentLocked
+      ? (defaultStaffId ?? staffMembers[0]?.id ?? "")
+      : isCreating
+        ? ""
+        : (defaultStaffId ?? staffMembers[0]?.id ?? ""),
+  );
+  const [serviceId, setServiceId] = useState(
+    isCreating ? "" : (defaultServiceId ?? services[0]?.id ?? ""),
+  );
+  const [selectedDate, setSelectedDate] = useState(
+    isCreating ? dateKey(new Date()) : defaultParts.date,
+  );
+  const [selectedTime, setSelectedTime] = useState(
+    isCreating ? "" : defaultParts.time,
+  );
+  const [selectedStatus, setSelectedStatus] = useState(
+    isCreating ? "" : safeDefaultStatus,
+  );
   const selectedService = services.find((service) => service.id === serviceId);
   const selectedCustomer = customers.find((customer) => customer.id === customerId);
   const selectedDuration = selectedService?.duration ?? 30;
@@ -179,7 +204,7 @@ export function AppointmentForm({
   const closesAt = dayHours?.isClosed ? "18:00" : (dayHours?.closesAt ?? "18:00");
   const isClosed = dayHours?.isClosed ?? false;
   const timeOptions = useMemo(() => {
-    if (isClosed) {
+    if (isClosed || !staffId || !serviceId) {
       return [];
     }
 
@@ -215,31 +240,80 @@ export function AppointmentForm({
     opensAt,
     selectedDate,
     selectedDuration,
+    serviceId,
     staffId,
   ]);
   const filteredCustomers = useMemo(() => {
+    if (!customerQuery.trim()) {
+      return [];
+    }
+
     const textQuery = normalizeCustomerText(customerQuery);
     const digitQuery = normalizeCustomerSearch(customerQuery);
-    const matches = customerQuery.trim()
-      ? customers.filter((customer) => {
-          const haystack = normalizeCustomerText(
-            `${customer.name} ${customer.firstName} ${customer.lastName} ${customer.email}`,
-          );
-          const phone = normalizeCustomerSearch(customer.phone);
+    const matches = customers.filter((customer) => {
+      const haystack = normalizeCustomerText(
+        `${customer.name} ${customer.firstName} ${customer.lastName} ${customer.email}`,
+      );
+      const phone = normalizeCustomerSearch(customer.phone);
 
-          return (
-            haystack.includes(textQuery) ||
-            Boolean(digitQuery && phone.includes(digitQuery))
-          );
-        })
-      : customers;
+      return (
+        haystack.includes(textQuery) ||
+        Boolean(digitQuery && phone.includes(digitQuery))
+      );
+    });
 
     return matches.slice(0, customerResultLimit);
   }, [customerQuery, customers]);
   const selectedSlot = timeOptions.find((option) => option.value === selectedTime);
-  const canSubmit = Boolean(customerId && selectedSlot && !selectedSlot.busy);
+  const canSubmit = Boolean(
+    branchId &&
+      customerId &&
+      staffId &&
+      serviceId &&
+      selectedStatus &&
+      selectedSlot &&
+      !selectedSlot.busy,
+  );
   const startsAtValue = canSubmit ? `${selectedDate}T${selectedTime}` : "";
   const busyCount = timeOptions.filter((option) => option.busy).length;
+  const blockingMessage = !branchId
+    ? "Şube seçin."
+    : !staffId
+      ? "Personel seçin."
+      : !customerId
+        ? "Müşteri seçin."
+        : !serviceId
+          ? "Hizmet seçin."
+          : timeOptions.length === 0
+            ? "Bu gün için uygun saat yok."
+            : !selectedTime
+              ? "Saat seçin."
+              : selectedSlot?.busy
+                ? "Seçilen saat dolu. Boş bir saat seçin."
+                : !selectedStatus
+                  ? "Durum seçin."
+                  : "Seçilen hizmet bu saate sığmıyor.";
+  const branchOptions = branches.map((branch) => ({
+    value: branch.id,
+    label: branch.name,
+  }));
+  const staffOptions = staffMembers.map((staff) => ({
+    value: staff.id,
+    label: staff.name,
+  }));
+  const serviceOptions = services.map((service) => ({
+    value: service.id,
+    label: `${service.name} · ${service.duration} dk · ${formatCurrency(service.priceCents)}`,
+  }));
+  const timeSelectOptions = timeOptions.map((option) => ({
+    value: option.value,
+    label: `${option.value}${option.busy ? " · dolu" : ""}`,
+    disabled: option.busy,
+  }));
+  const statusOptions = appointmentStatusOptions.map((status) => ({
+    value: status.value,
+    label: appointmentStatusLabel(status.value),
+  }));
 
   return (
     <form
@@ -252,26 +326,41 @@ export function AppointmentForm({
       ) : null}
       <input type="hidden" name="startsAt" value={startsAtValue} required />
       <input type="hidden" name="customerId" value={customerId} required />
+      {assignmentLocked ? (
+        <>
+          <input type="hidden" name="branchId" value={branchId} />
+          <input type="hidden" name="staffId" value={staffId} />
+        </>
+      ) : null}
 
-      <label className="text-sm font-medium">
-        Şube
-        <select
-          name="branchId"
-          required
-          value={branchId}
-          onChange={(event) => setBranchId(event.target.value)}
-          className="mt-2 min-h-11 w-full rounded-xl border border-border bg-background px-3"
-        >
-          {branches.map((branch) => (
-            <option key={branch.id} value={branch.id}>
-              {branch.name}
-            </option>
-          ))}
-        </select>
-      </label>
+      {assignmentLocked ? null : (
+        <label className="text-sm font-medium">
+          Şube
+          <Select
+            name="branchId"
+            required
+            value={branchId}
+            placeholder="Şube seçiniz"
+            options={branchOptions}
+            onValueChange={setBranchId}
+          />
+        </label>
+      )}
 
-      <div className="text-sm font-medium">
-        <label htmlFor="appointment-customer-search">Müşteri</label>
+      <div className="relative text-sm font-medium">
+        <div className="flex items-center justify-between gap-3">
+          <label htmlFor="appointment-customer-search">Müşteri</label>
+          {!selectedCustomer ? (
+            <span className="text-xs font-semibold text-amber-700">
+              Listeden müşteri seçin
+            </span>
+          ) : (
+            <span className="truncate text-xs font-semibold text-muted-foreground">
+              Seçili müşteri:{" "}
+              <span className="text-primary">{selectedCustomer.name}</span>
+            </span>
+          )}
+        </div>
         <div className="mt-2 flex min-h-11 items-center gap-2 rounded-xl border border-border bg-background px-3">
           <Search size={17} className="shrink-0 text-muted-foreground" />
           <input
@@ -281,6 +370,7 @@ export function AppointmentForm({
               const nextValue = event.target.value;
 
               setCustomerQuery(nextValue);
+              setCustomerResultsOpen(Boolean(nextValue.trim()));
 
               if (
                 nextValue.trim() === "" ||
@@ -297,86 +387,69 @@ export function AppointmentForm({
             autoComplete="off"
           />
         </div>
-        <div className="mt-2 max-h-56 overflow-y-auto rounded-xl border border-border bg-background p-1">
-          {filteredCustomers.map((customer) => {
-            const selected = customer.id === customerId;
+        {customerResultsOpen && customerQuery.trim() ? (
+          <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-30 max-h-56 overflow-y-auto rounded-xl border border-border bg-background p-1 shadow-panel">
+            {filteredCustomers.map((customer) => {
+              const selected = customer.id === customerId;
 
-            return (
-              <button
-                key={customer.id}
-                type="button"
-                onClick={() => {
-                  setCustomerId(customer.id);
-                  setCustomerQuery(`${customer.name} ${customer.phone}`);
-                }}
-                className="flex min-h-11 w-full items-center justify-between gap-3 rounded-lg px-3 text-left transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/25 focus-visible:ring-inset"
-              >
-                <span className="min-w-0">
-                  <span className="block truncate font-semibold">
-                    {customer.name}
+              return (
+                <button
+                  key={customer.id}
+                  type="button"
+                  onClick={() => {
+                    setCustomerId(customer.id);
+                    setCustomerQuery(`${customer.name} ${customer.phone}`);
+                    setCustomerResultsOpen(false);
+                  }}
+                  className="flex min-h-11 w-full items-center justify-between gap-3 rounded-lg px-3 text-left transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/25 focus-visible:ring-inset"
+                >
+                  <span className="min-w-0">
+                    <span className="block truncate font-semibold">
+                      {customer.name}
+                    </span>
+                    <span className="block truncate text-xs text-muted-foreground">
+                      {customer.phone}
+                    </span>
                   </span>
-                  <span className="block truncate text-xs text-muted-foreground">
-                    {customer.phone}
-                  </span>
-                </span>
-                {selected ? (
-                  <Check size={17} className="shrink-0 text-primary" />
-                ) : null}
-              </button>
-            );
-          })}
-          {filteredCustomers.length === 0 ? (
-            <div className="px-3 py-2 text-sm text-muted-foreground">
-              Müşteri bulunamadı.
-            </div>
-          ) : null}
-        </div>
-        {selectedCustomer ? (
-          <p className="mt-2 text-xs text-muted-foreground">
-            Seçili müşteri:{" "}
-            <span className="font-semibold text-foreground">
-              {selectedCustomer.name}
-            </span>
-          </p>
-        ) : (
-          <p className="mt-2 text-xs text-amber-700">
-            Randevu için listeden bir müşteri seçin.
-          </p>
-        )}
+                  {selected ? (
+                    <Check size={17} className="shrink-0 text-primary" />
+                  ) : null}
+                </button>
+              );
+            })}
+            {filteredCustomers.length === 0 ? (
+              <div className="px-3 py-2 text-sm text-muted-foreground">
+                Müşteri bulunamadı.
+              </div>
+            ) : null}
+          </div>
+        ) : null}
       </div>
 
-      <label className="text-sm font-medium">
-        Personel
-        <select
-          name="staffId"
-          required
-          value={staffId}
-          onChange={(event) => setStaffId(event.target.value)}
-          className="mt-2 min-h-11 w-full rounded-xl border border-border bg-background px-3"
-        >
-          {staffMembers.map((staff) => (
-            <option key={staff.id} value={staff.id}>
-              {staff.name}
-            </option>
-          ))}
-        </select>
-      </label>
+      {assignmentLocked ? null : (
+        <label className="text-sm font-medium">
+          Personel
+          <Select
+            name="staffId"
+            required
+            value={staffId}
+            placeholder="Personel seçiniz"
+            options={staffOptions}
+            onValueChange={setStaffId}
+          />
+        </label>
+      )}
 
       <label className="text-sm font-medium">
         Hizmet
-        <select
+        <Select
           name="serviceId"
           required
           value={serviceId}
-          onChange={(event) => setServiceId(event.target.value)}
-          className="mt-2 min-h-11 w-full rounded-xl border border-border bg-background px-3"
-        >
-          {services.map((service) => (
-            <option key={service.id} value={service.id}>
-              {service.name} · {service.duration} dk · {formatCurrency(service.priceCents)}
-            </option>
-          ))}
-        </select>
+          placeholder="Hizmet seçiniz"
+          options={serviceOptions}
+          onValueChange={setServiceId}
+        />
       </label>
 
       <label className="text-sm font-medium">
@@ -392,28 +465,14 @@ export function AppointmentForm({
 
       <label className="text-sm font-medium">
         Saat
-        <select
+        <Select
           required
           value={selectedTime}
-          onChange={(event) => setSelectedTime(event.target.value)}
-          className="mt-2 min-h-11 w-full rounded-xl border border-border bg-background px-3 disabled:opacity-60"
-          disabled={timeOptions.length === 0}
-        >
-          {timeOptions.length === 0 ? (
-            <option value="">Kapalı</option>
-          ) : (
-            timeOptions.map((option) => (
-              <option
-                key={option.value}
-                value={option.value}
-                disabled={option.busy}
-              >
-                {option.value}
-                {option.busy ? " · dolu" : ""}
-              </option>
-            ))
-          )}
-        </select>
+          placeholder="Saat seçiniz"
+          options={timeSelectOptions}
+          disabled={!staffId || !serviceId || timeOptions.length === 0}
+          onValueChange={setSelectedTime}
+        />
       </label>
 
       <div className="rounded-xl border border-border bg-background p-3 text-sm md:col-span-2">
@@ -425,35 +484,25 @@ export function AppointmentForm({
           <span>·</span>
           <span>{selectedDuration} dakika</span>
           <span>·</span>
-          <span>{busyCount} dolu başlangıç kilitli</span>
+          <span>{busyCount} dolu saat</span>
         </div>
         {!canSubmit ? (
           <div className="mt-3 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-amber-900">
             {selectedSlot?.busy ? <Lock size={17} /> : <AlertCircle size={17} />}
-            <p>
-              {!customerId
-                ? "Randevu oluşturmak için önce müşteri seçin."
-                : selectedSlot?.busy
-                ? "Bu personelde seçilen aralık dolu. Listeden boş bir saat seçin."
-                : "Seçilen hizmet bu mesai aralığına sığmıyor veya işletme o gün kapalı."}
-            </p>
+            <p>{blockingMessage}</p>
           </div>
         ) : null}
       </div>
 
       <label className="text-sm font-medium">
         Durum
-        <select
+        <Select
           name="status"
-          className="mt-2 min-h-11 w-full rounded-xl border border-border bg-background px-3"
-          defaultValue={defaultStatus}
-        >
-          {appointmentStatuses.map((status) => (
-            <option key={status} value={status}>
-              {status}
-            </option>
-          ))}
-        </select>
+          value={selectedStatus}
+          placeholder="Durum seçiniz"
+          options={statusOptions}
+          onValueChange={setSelectedStatus}
+        />
       </label>
 
       <label className="text-sm font-medium">

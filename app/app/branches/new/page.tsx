@@ -1,12 +1,19 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
 import { createBranchAction } from "@/app/actions";
 import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
 import { PhoneInput } from "@/components/phone-input";
 import { getTenantDataset, requireTenantContext } from "@/lib/app-data";
+import { canManageMembership } from "@/lib/roles";
 
 export default async function NewBranchPage() {
   const { membership } = await requireTenantContext();
+
+  if (!canManageMembership(membership)) {
+    redirect("/app/calendar");
+  }
+
   const { business, branches } = await getTenantDataset(membership);
   const canAddBranch = branches.length < business.branchLimit;
 
@@ -17,10 +24,6 @@ export default async function NewBranchPage() {
         <h1 className="text-2xl font-semibold tracking-normal md:text-3xl">
           Şube Ekle
         </h1>
-        <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-          Şube işletmeden bağımsız bir kayıt değildir; personel, randevu, stok
-          ve finans hareketleri bu şube altında toplanır.
-        </p>
       </div>
       {canAddBranch ? (
         <form

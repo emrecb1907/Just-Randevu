@@ -4,10 +4,16 @@ import { redirect } from "next/navigation";
 
 import { SurfaceCard } from "@/components/surface-card";
 import { getTenantDataset, requireTenantContext } from "@/lib/app-data";
+import { canManageMembership } from "@/lib/roles";
 import { formatCurrency } from "@/lib/utils";
 
 export default async function StockPage() {
   const { membership } = await requireTenantContext();
+
+  if (!canManageMembership(membership)) {
+    redirect("/app/calendar");
+  }
+
   const { stockItems, activeModules } = await getTenantDataset(membership);
 
   if (!activeModules.includes("stock")) {
@@ -22,9 +28,6 @@ export default async function StockPage() {
           <h1 className="text-2xl font-semibold tracking-normal md:text-3xl">
             Stok Yönetimi
           </h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Ürün kartı, açılış stoğu ve düzenleme ayrı akışlarda yapılır.
-          </p>
         </div>
         <Link
           href="/app/stock/new"

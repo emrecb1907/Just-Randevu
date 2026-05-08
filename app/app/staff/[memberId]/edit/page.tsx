@@ -1,10 +1,12 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 
 import { deleteStaffAction, updateStaffAction } from "@/app/actions";
 import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
 import { PhoneInput } from "@/components/phone-input";
+import { Select } from "@/components/ui/select";
 import { getTenantDataset, requireTenantContext } from "@/lib/app-data";
+import { canManageMembership } from "@/lib/roles";
 
 type EditStaffPageProps = {
   params: Promise<{
@@ -15,6 +17,11 @@ type EditStaffPageProps = {
 export default async function EditStaffPage({ params }: EditStaffPageProps) {
   const { memberId } = await params;
   const { membership } = await requireTenantContext();
+
+  if (!canManageMembership(membership)) {
+    redirect("/app/calendar");
+  }
+
   const { business, branches, staffMembers } = await getTenantDataset(membership);
   const staff = staffMembers.find((item) => item.id === memberId);
 
@@ -29,9 +36,6 @@ export default async function EditStaffPage({ params }: EditStaffPageProps) {
         <h1 className="text-2xl font-semibold tracking-normal md:text-3xl">
           {staff.name}
         </h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Profil bilgisi, şube bağı ve işletme yetkisi birlikte güncellenir.
-        </p>
       </div>
       <form
         action={updateStaffAction}
@@ -55,20 +59,26 @@ export default async function EditStaffPage({ params }: EditStaffPageProps) {
         <PhoneInput defaultValue={staff.phone} />
         <label className="text-sm font-medium">
           Şube
-          <select name="branchId" required defaultValue={staff.branchId} className="mt-2 min-h-11 w-full rounded-xl border border-border bg-background px-3">
-            {branches.map((branch) => (
-              <option key={branch.id} value={branch.id}>
-                {branch.name}
-              </option>
-            ))}
-          </select>
+          <Select
+            name="branchId"
+            required
+            defaultValue={staff.branchId}
+            options={branches.map((branch) => ({
+              value: branch.id,
+              label: branch.name,
+            }))}
+          />
         </label>
         <label className="text-sm font-medium">
           Rol
-          <select name="role" className="mt-2 min-h-11 w-full rounded-xl border border-border bg-background px-3" defaultValue={staff.role === "admin" ? "admin" : "staff"}>
-            <option value="staff">Personel</option>
-            <option value="admin">Yönetici</option>
-          </select>
+          <Select
+            name="role"
+            defaultValue={staff.role === "admin" ? "admin" : "staff"}
+            options={[
+              { value: "staff", label: "Personel" },
+              { value: "admin", label: "Yönetici" },
+            ]}
+          />
         </label>
         <div className="flex items-end justify-end gap-2 md:col-span-2">
           <Link href="/app/staff" className="inline-flex min-h-11 items-center rounded-xl border border-border bg-background px-4 text-sm font-semibold">

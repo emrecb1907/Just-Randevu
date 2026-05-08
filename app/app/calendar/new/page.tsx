@@ -1,6 +1,7 @@
 import { createAppointmentAction } from "@/app/actions";
 import { AppointmentForm } from "@/components/appointment-form";
 import { getTenantDataset, requireTenantContext } from "@/lib/app-data";
+import { isStaffMembership } from "@/lib/roles";
 
 type NewAppointmentPageProps = {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
@@ -31,6 +32,7 @@ export default async function NewAppointmentPage({
   const requestedStartsAt = firstParam(params.startsAt);
   const requestedStaffId = firstParam(params.staffId);
   const requestedCustomerId = firstParam(params.customerId);
+  const assignmentLocked = isStaffMembership(membership);
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
@@ -39,9 +41,6 @@ export default async function NewAppointmentPage({
         <h1 className="text-2xl font-semibold tracking-normal md:text-3xl">
           Randevu Oluştur
         </h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Seçilen hizmetin o andaki süre ve fiyatı bu randevuda korunur.
-        </p>
       </div>
       {canCreate ? (
         <AppointmentForm
@@ -55,8 +54,9 @@ export default async function NewAppointmentPage({
           businessHours={businessHours}
           defaultBranchId={primaryBranch.id}
           defaultCustomerId={requestedCustomerId}
-          defaultStaffId={requestedStaffId}
+          defaultStaffId={assignmentLocked ? membership.memberId : requestedStaffId}
           defaultStartsAt={requestedStartsAt}
+          assignmentLocked={assignmentLocked}
           action={createAppointmentAction}
         />
       ) : (

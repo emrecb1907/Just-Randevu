@@ -1,11 +1,19 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
 import { createServiceAction } from "@/app/actions";
 import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
+import { Select } from "@/components/ui/select";
 import { getTenantDataset, requireTenantContext } from "@/lib/app-data";
+import { canManageMembership } from "@/lib/roles";
 
 export default async function NewServicePage() {
   const { membership } = await requireTenantContext();
+
+  if (!canManageMembership(membership)) {
+    redirect("/app/calendar");
+  }
+
   const { business } = await getTenantDataset(membership);
 
   return (
@@ -15,9 +23,6 @@ export default async function NewServicePage() {
         <h1 className="text-2xl font-semibold tracking-normal md:text-3xl">
           Hizmet Tanımla
         </h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Bu süre ve fiyat yeni randevularda kullanılır.
-        </p>
       </div>
       <form
         action={createServiceAction}
@@ -25,7 +30,7 @@ export default async function NewServicePage() {
       >
         <input type="hidden" name="businessId" value={business.id} />
         <input type="hidden" name="isActive" value="true" />
-        <label className="text-sm font-medium">
+        <label className="text-sm font-medium md:col-span-2">
           Hizmet adı
           <input
             name="name"
@@ -36,28 +41,15 @@ export default async function NewServicePage() {
           />
         </label>
         <label className="text-sm font-medium">
-          Kategori
-          <input
-            name="category"
-            required
-            minLength={2}
-            className="mt-2 min-h-11 w-full rounded-xl border border-border bg-background px-3"
-            placeholder="Kategori"
-          />
-        </label>
-        <label className="text-sm font-medium">
           Süre
-          <select
+          <Select
             name="durationMinutes"
-            className="mt-2 min-h-11 w-full rounded-xl border border-border bg-background px-3"
-            defaultValue="30"
-          >
-            {[15, 20, 30, 40, 60, 90, 120].map((duration) => (
-              <option key={duration} value={duration}>
-                {duration} dakika
-              </option>
-            ))}
-          </select>
+            placeholder="Süre seçiniz"
+            options={[15, 20, 30, 40, 60, 90, 120].map((duration) => ({
+              value: String(duration),
+              label: `${duration} dakika`,
+            }))}
+          />
         </label>
         <label className="text-sm font-medium">
           Fiyat

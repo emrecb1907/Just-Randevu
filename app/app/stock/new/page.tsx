@@ -4,9 +4,15 @@ import { redirect } from "next/navigation";
 import { createProductAction } from "@/app/actions";
 import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
 import { getTenantDataset, requireTenantContext } from "@/lib/app-data";
+import { canManageMembership } from "@/lib/roles";
 
 export default async function NewStockPage() {
   const { membership } = await requireTenantContext();
+
+  if (!canManageMembership(membership)) {
+    redirect("/app/calendar");
+  }
+
   const { business, branches, activeModules } = await getTenantDataset(membership);
   const primaryBranch = branches[0];
 
@@ -21,9 +27,6 @@ export default async function NewStockPage() {
         <h1 className="text-2xl font-semibold tracking-normal md:text-3xl">
           Ürün ve Açılış Stoğu
         </h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Ürün kartı ve ilk stok hareketi tek işlemde oluşturulur.
-        </p>
       </div>
       {primaryBranch ? (
         <form action={createProductAction} className="grid gap-4 rounded-[24px] border border-border bg-surface p-4 md:grid-cols-2">

@@ -1,12 +1,19 @@
 import Link from "next/link";
 import { Pencil, Plus } from "lucide-react";
+import { redirect } from "next/navigation";
 
 import { SurfaceCard } from "@/components/surface-card";
 import { getTenantDataset, requireTenantContext } from "@/lib/app-data";
+import { canManageMembership } from "@/lib/roles";
 import { formatCurrency } from "@/lib/utils";
 
 export default async function ServicesPage() {
   const { membership } = await requireTenantContext();
+
+  if (!canManageMembership(membership)) {
+    redirect("/app/calendar");
+  }
+
   const { services } = await getTenantDataset(membership);
 
   return (
@@ -17,10 +24,6 @@ export default async function ServicesPage() {
           <h1 className="text-2xl font-semibold tracking-normal md:text-3xl">
             Hizmetler
           </h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Hizmet sürelerini ve ücretlerini yönetin. Mevcut randevular eski
-            ücretleriyle korunur.
-          </p>
         </div>
         <Link
           href="/app/services/new"
@@ -37,10 +40,7 @@ export default async function ServicesPage() {
             key={service.id}
             className="shadow-sm"
           >
-            <p className="text-sm font-semibold text-primary">
-              {service.category}
-            </p>
-            <h2 className="mt-2 text-lg font-semibold">{service.name}</h2>
+            <h2 className="text-lg font-semibold">{service.name}</h2>
             <div className="mt-4 flex items-center justify-between text-sm">
               <span>{service.duration} dk</span>
               <span className="font-semibold">

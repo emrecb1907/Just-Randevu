@@ -2,6 +2,7 @@ import Link from "next/link";
 import { CalendarPlus, Pencil, Plus, Search, X } from "lucide-react";
 
 import { getTenantDataset, requireTenantContext } from "@/lib/app-data";
+import { canManageMembership } from "@/lib/roles";
 
 type CustomersPageProps = {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
@@ -20,9 +21,10 @@ function normalizeText(value: string) {
 }
 
 export default async function CustomersPage({ searchParams }: CustomersPageProps) {
-  const { membership } = await requireTenantContext();
+  const { user, membership } = await requireTenantContext();
   const { customers } = await getTenantDataset(membership);
   const params = searchParams ? await searchParams : {};
+  const error = firstParam(params.error);
   const query = firstParam(params.q)?.trim() ?? "";
   const textQuery = normalizeText(query);
   const digitQuery = normalizeSearch(query);
@@ -48,10 +50,6 @@ export default async function CustomersPage({ searchParams }: CustomersPageProps
           <h1 className="text-2xl font-semibold tracking-normal md:text-3xl">
             Müşteriler
           </h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Telefon benzersizliği işletme bazlıdır; kayıt açma ve düzenleme ayrı
-            akışlarda yapılır.
-          </p>
         </div>
         <Link
           href="/app/customers/new"
@@ -90,47 +88,57 @@ export default async function CustomersPage({ searchParams }: CustomersPageProps
           </button>
         </div>
       </form>
+      {error ? (
+        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-800">
+          {error}
+        </div>
+      ) : null}
       <section className="overflow-hidden rounded-[24px] border border-border bg-surface">
-        <div className="hidden grid-cols-[1.2fr_1fr_1fr_0.8fr_112px] border-b border-border bg-muted/50 p-3 text-xs font-semibold text-muted-foreground md:grid">
+        <div className="hidden grid-cols-[1.2fr_1fr_1.2fr_112px] border-b border-border bg-muted/50 p-3 text-xs font-semibold text-muted-foreground md:grid">
           <span>Müşteri</span>
           <span>Telefon</span>
-          <span>Son işlem</span>
-          <span>Durum</span>
+          <span>E-posta</span>
           <span />
         </div>
-        {filteredCustomers.map((customer) => (
-          <article
-            key={customer.id}
-            className="grid gap-2 border-b border-border p-4 last:border-b-0 md:grid-cols-[1.2fr_1fr_1fr_0.8fr_112px] md:items-center"
-          >
-            <span className="font-semibold">{customer.name}</span>
-            <span className="text-sm text-muted-foreground">
-              {customer.phone}
-            </span>
-            <span className="text-sm">{customer.lastService}</span>
-            <span className="w-fit rounded-full bg-primary/10 px-2 py-1 text-xs font-semibold text-primary">
-              {customer.status}
-            </span>
-            <div className="flex gap-2">
-              <Link
-                href={`/app/calendar/new?customerId=${customer.id}`}
-                className="grid size-10 place-items-center rounded-xl border border-primary/20 bg-primary/10 text-primary hover:bg-primary/15"
-                aria-label={`${customer.name} için randevu oluştur`}
-                title="Randevu oluştur"
-              >
-                <CalendarPlus size={16} />
-              </Link>
-              <Link
-                href={`/app/customers/${customer.id}/edit`}
-                className="grid size-10 place-items-center rounded-xl border border-border bg-background text-muted-foreground hover:text-foreground"
-                aria-label={`${customer.name} düzenle`}
-                title="Düzenle"
-              >
-                <Pencil size={16} />
-              </Link>
-            </div>
-          </article>
-        ))}
+        {filteredCustomers.map((customer) => {
+          const canEditCustomer =
+            canManageMembership(membership) || customer.createdBy === user.profile.id;
+
+          return (
+            <article
+              key={customer.id}
+              className="grid gap-2 border-b border-border p-4 last:border-b-0 md:grid-cols-[1.2fr_1fr_1.2fr_112px] md:items-center"
+            >
+              <span className="font-semibold">{customer.name}</span>
+              <span className="text-sm text-muted-foreground">
+                {customer.phone}
+              </span>
+              <span className="min-w-0 truncate text-sm text-muted-foreground">
+                {customer.email || "E-posta yok"}
+              </span>
+              <div className="flex gap-2">
+                <Link
+                  href={`/app/calendar/new?customerId=${customer.id}`}
+                  className="grid size-10 place-items-center rounded-xl border border-primary/20 bg-primary/10 text-primary hover:bg-primary/15"
+                  aria-label={`${customer.name} için randevu oluştur`}
+                  title="Randevu oluştur"
+                >
+                  <CalendarPlus size={16} />
+                </Link>
+                {canEditCustomer ? (
+                  <Link
+                    href={`/app/customers/${customer.id}/edit`}
+                    className="grid size-10 place-items-center rounded-xl border border-border bg-background text-muted-foreground hover:text-foreground"
+                    aria-label={`${customer.name} düzenle`}
+                    title="Düzenle"
+                  >
+                    <Pencil size={16} />
+                  </Link>
+                ) : null}
+              </div>
+            </article>
+          );
+        })}
         {filteredCustomers.length === 0 ? (
           <div className="p-4 text-sm text-muted-foreground">
             {query ? "Aramaya uygun müşteri bulunamadı." : "Henüz müşteri kaydı yok."}

@@ -3,12 +3,15 @@ import Link from "next/link";
 import { createCustomerAction } from "@/app/actions";
 import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
 import { PhoneInput } from "@/components/phone-input";
+import { Select } from "@/components/ui/select";
 import { getTenantDataset, requireTenantContext } from "@/lib/app-data";
+import { isStaffMembership } from "@/lib/roles";
 
 export default async function NewCustomerPage() {
   const { membership } = await requireTenantContext();
   const { business, branches } = await getTenantDataset(membership);
   const primaryBranch = branches[0];
+  const branchLocked = isStaffMembership(membership) || branches.length === 1;
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
@@ -17,9 +20,6 @@ export default async function NewCustomerPage() {
         <h1 className="text-2xl font-semibold tracking-normal md:text-3xl">
           Müşteri Kaydı Aç
         </h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          KVKK onayı zorunlu, WhatsApp izni ayrı tutulur.
-        </p>
       </div>
       {primaryBranch ? (
         <form
@@ -27,22 +27,20 @@ export default async function NewCustomerPage() {
           className="grid gap-4 rounded-[24px] border border-border bg-surface p-4 md:grid-cols-2"
         >
           <input type="hidden" name="businessId" value={business.id} />
-          {branches.length === 1 ? (
+          {branchLocked ? (
             <input type="hidden" name="branchId" value={primaryBranch.id} />
           ) : (
             <label className="text-sm font-medium md:col-span-2">
               Şube
-              <select
+              <Select
                 name="branchId"
                 required
-                className="mt-2 min-h-11 w-full rounded-xl border border-border bg-background px-3"
-              >
-                {branches.map((branch) => (
-                  <option key={branch.id} value={branch.id}>
-                    {branch.name}
-                  </option>
-                ))}
-              </select>
+                placeholder="Şube seçiniz"
+                options={branches.map((branch) => ({
+                  value: branch.id,
+                  label: branch.name,
+                }))}
+              />
             </label>
           )}
           <label className="text-sm font-medium">
@@ -103,7 +101,7 @@ export default async function NewCustomerPage() {
             </Link>
             <ConfirmSubmitButton
               title="Müşteri kaydı oluşturulsun mu?"
-              description="Aynı telefon bu işletmede tekrar açılmayacak; kayıt varsa bilgiler güncellenecek."
+              description="Aynı telefon bu işletmede tekrar açılmayacak."
             >
               Müşteri kaydet
             </ConfirmSubmitButton>

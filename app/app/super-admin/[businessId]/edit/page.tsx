@@ -8,7 +8,9 @@ import {
 import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
 import { PhoneInput } from "@/components/phone-input";
 import { SurfaceCard } from "@/components/surface-card";
+import { Select } from "@/components/ui/select";
 import { getSystemDataset, requireSuperAdminContext } from "@/lib/app-data";
+import { subscriptionStatusLabel } from "@/lib/status-labels";
 import { formatCurrency } from "@/lib/utils";
 
 type EditBusinessPageProps = {
@@ -34,9 +36,6 @@ export default async function EditBusinessPage({ params }: EditBusinessPageProps
         <h1 className="text-2xl font-semibold tracking-normal md:text-3xl">
           {business.name}
         </h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Plan, iletişim, çalışma saatleri ve aktiflik durumunu yönetin.
-        </p>
       </div>
       <SurfaceCard>
         <div className="grid gap-3 text-sm md:grid-cols-4">
@@ -48,7 +47,9 @@ export default async function EditBusinessPage({ params }: EditBusinessPageProps
           </div>
           <div>
             <p className="text-muted-foreground">Abonelik</p>
-            <p className="mt-1 font-semibold">{business.subscriptionStatus}</p>
+            <p className="mt-1 font-semibold">
+              {subscriptionStatusLabel(business.subscriptionStatus)}
+            </p>
           </div>
           <div>
             <p className="text-muted-foreground">Abonelik tutarı</p>
@@ -69,7 +70,17 @@ export default async function EditBusinessPage({ params }: EditBusinessPageProps
         <label className="text-sm font-medium">İşletme adı<input name="name" required minLength={2} defaultValue={business.name} className="mt-2 min-h-11 w-full rounded-xl border border-border bg-background px-3" /></label>
         <label className="text-sm font-medium">E-posta<input name="email" type="email" defaultValue={business.email} className="mt-2 min-h-11 w-full rounded-xl border border-border bg-background px-3" /></label>
         <PhoneInput defaultValue={business.phone} required={false} />
-        <label className="text-sm font-medium">Plan<select name="plan" defaultValue={business.plan} className="mt-2 min-h-11 w-full rounded-xl border border-border bg-background px-3">{system.plans.map((plan) => (<option key={plan.key} value={plan.key}>{plan.name}</option>))}</select></label>
+        <label className="text-sm font-medium">
+          Plan
+          <Select
+            name="plan"
+            defaultValue={business.plan}
+            options={system.plans.map((plan) => ({
+              value: plan.key,
+              label: plan.name,
+            }))}
+          />
+        </label>
         <label className="text-sm font-medium">Açılış saati<input name="opensAt" type="time" defaultValue={business.opensAt} className="mt-2 min-h-11 w-full rounded-xl border border-border bg-background px-3" /></label>
         <label className="text-sm font-medium">Kapanış saati<input name="closesAt" type="time" defaultValue={business.closesAt} className="mt-2 min-h-11 w-full rounded-xl border border-border bg-background px-3" /></label>
         <label className="flex items-center gap-2 text-sm font-medium">

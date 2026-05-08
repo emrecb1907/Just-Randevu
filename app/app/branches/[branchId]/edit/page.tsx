@@ -1,10 +1,11 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 
 import { deleteBranchAction, updateBranchAction } from "@/app/actions";
 import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
 import { PhoneInput } from "@/components/phone-input";
 import { getTenantDataset, requireTenantContext } from "@/lib/app-data";
+import { canManageMembership } from "@/lib/roles";
 
 export default async function EditBranchPage({
   params,
@@ -13,6 +14,11 @@ export default async function EditBranchPage({
 }) {
   const { branchId } = await params;
   const { membership } = await requireTenantContext();
+
+  if (!canManageMembership(membership)) {
+    redirect("/app/calendar");
+  }
+
   const { business, branches } = await getTenantDataset(membership);
   const branch = branches.find((item) => item.id === branchId);
 
@@ -27,9 +33,6 @@ export default async function EditBranchPage({
         <h1 className="text-2xl font-semibold tracking-normal md:text-3xl">
           {branch.name}
         </h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Şube bilgileri personel, randevu, stok ve finans ekranlarında görünür.
-        </p>
       </div>
       <form
         action={updateBranchAction}

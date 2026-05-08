@@ -1,4 +1,5 @@
-import { CalendarDays } from "lucide-react";
+import Link from "next/link";
+import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
 
 import { TimelineGrid, type TimelineEvent } from "@/components/timeline-grid";
 import type { Appointment } from "@/lib/app-data";
@@ -10,15 +11,17 @@ function formatDateKey(date: Date) {
   return `${year}-${month}-${day}`;
 }
 
-function weekDays() {
-  const now = new Date();
-  const monday = new Date(now);
-  const dayIndex = (now.getDay() + 6) % 7;
-  monday.setDate(now.getDate() - dayIndex);
+function addDays(date: Date, days: number) {
+  const next = new Date(date);
+  next.setDate(date.getDate() + days);
+  return next;
+}
+
+function weekDays(baseDate: Date) {
+  const today = new Date();
 
   return Array.from({ length: 7 }, (_, index) => {
-    const date = new Date(monday);
-    date.setDate(monday.getDate() + index);
+    const date = addDays(baseDate, index);
     return {
       id: formatDateKey(date),
       label: date.toLocaleDateString("tr-TR", { weekday: "short" }),
@@ -26,7 +29,7 @@ function weekDays() {
         day: "2-digit",
         month: "short",
       }),
-      muted: date.toDateString() === now.toDateString(),
+      muted: date.toDateString() === today.toDateString(),
     };
   });
 }
@@ -42,18 +45,24 @@ export function CalendarBoard({
   appointments,
   opensAt = "09:00",
   closesAt = "18:00",
+  canEditAppointments = true,
+  selectedDate,
 }: {
   appointments: Appointment[];
   opensAt?: string;
   closesAt?: string;
+  canEditAppointments?: boolean;
+  selectedDate?: Date;
 }) {
-  const days = weekDays();
-  const today = new Date();
-  const monthLabel = today.toLocaleDateString("tr-TR", {
+  const baseDate = selectedDate ?? new Date();
+  const days = weekDays(baseDate);
+  const monthLabel = baseDate.toLocaleDateString("tr-TR", {
     month: "long",
     year: "numeric",
   });
-  const rangeLabel = `${days[0]?.subLabel ?? ""} - ${days[6]?.subLabel ?? ""} ${today.getFullYear()}`;
+  const previousWeekDate = addDays(baseDate, -7);
+  const nextWeekDate = addDays(baseDate, 7);
+  const rangeLabel = `${days[0]?.subLabel ?? ""} - ${days[6]?.subLabel ?? ""} ${baseDate.getFullYear()}`;
   const events: TimelineEvent[] = appointments.map((appointment) => ({
     id: appointment.id,
     columnId: appointment.dateKey,
@@ -61,6 +70,13 @@ export function CalendarBoard({
     endsAt: addMinutes(appointment.start, appointment.durationMinutes),
     title: appointment.service,
     meta: `${appointment.customer} · ${appointment.staffName}`,
+    details: [
+      { label: "Saat", value: `${appointment.start} - ${addMinutes(appointment.start, appointment.durationMinutes)}` },
+      { label: "Müşteri", value: appointment.customer },
+      { label: "Hizmet", value: appointment.service },
+      { label: "Personel", value: appointment.staffName },
+      { label: "Telefon", value: appointment.phone },
+    ],
     tone:
       appointment.color === "yellow"
         ? "amber"
@@ -69,24 +85,45 @@ export function CalendarBoard({
         : appointment.color === "rose"
           ? "red"
           : appointment.color,
-    href: `/app/calendar/${appointment.id}/edit`,
+    ...(canEditAppointments
+      ? { href: `/app/calendar/${appointment.id}/edit`, actionLabel: "Detaya git" }
+      : {}),
   }));
 
   return (
     <section className="space-y-4">
-      <div className="rounded-[24px] border border-border bg-surface p-4 shadow-panel lg:p-5">
-        <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-          <div>
-            <h2 className="text-xl font-semibold">{monthLabel}</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Randevular işletme çalışma saatleri içinde gösterilir.
-            </p>
+      <div className="rounded-[22px] border border-border bg-surface p-3 shadow-panel">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex items-center gap-3">
+            <div className="grid size-10 place-items-center rounded-xl bg-primary/10 text-primary">
+              <CalendarDays size={18} />
+            </div>
+            <h2 className="text-base font-semibold capitalize">{monthLabel}</h2>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <div className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-border bg-background px-3 text-sm font-semibold">
-              <CalendarDays size={16} />
+            <Link
+              href={`/app/calendar?date=${formatDateKey(previousWeekDate)}`}
+              className="grid min-h-10 min-w-10 place-items-center rounded-xl border border-border bg-background text-muted-foreground"
+              aria-label="Önceki hafta"
+            >
+              <ChevronLeft size={18} />
+            </Link>
+            <div className="inline-flex min-h-10 items-center rounded-xl border border-border bg-background px-3 text-sm font-semibold">
               {rangeLabel}
             </div>
+            <Link
+              href={`/app/calendar?date=${formatDateKey(nextWeekDate)}`}
+              className="grid min-h-10 min-w-10 place-items-center rounded-xl border border-border bg-background text-muted-foreground"
+              aria-label="Sonraki hafta"
+            >
+              <ChevronRight size={18} />
+            </Link>
+            <Link
+              href="/app/calendar"
+              className="inline-flex min-h-10 items-center rounded-xl border border-border bg-background px-3 text-sm font-semibold"
+            >
+              Bu hafta
+            </Link>
           </div>
         </div>
       </div>

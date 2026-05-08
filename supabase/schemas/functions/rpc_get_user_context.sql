@@ -26,6 +26,7 @@ begin
       select jsonb_agg(
         jsonb_build_object(
           'member_id', bm.id,
+          'profile_id', bm.profile_id,
           'business_id', bm.business_id,
           'branch_id', bm.branch_id,
           'role', bm.role,

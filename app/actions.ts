@@ -13,6 +13,7 @@ import {
   customerUpdateSchema,
   deleteEntitySchema,
   appointmentFormSchema,
+  appointmentStatusUpdateSchema,
   appointmentUpdateSchema,
   incomeExpenseSchema,
   incomeExpenseUpdateSchema,
@@ -39,6 +40,7 @@ import {
   requireTenantContext,
   requireUserContext,
 } from "@/lib/app-data";
+import { canManageMembership, isStaffMembership } from "@/lib/roles";
 
 function formObject(formData: FormData) {
   return Object.fromEntries(formData.entries());
@@ -58,6 +60,15 @@ function assertBusinessScope(formData: FormData, expectedBusinessId: string) {
 
   if (businessId !== expectedBusinessId) {
     redirect("/app?error=yetkisiz-isletme");
+  }
+}
+
+function assertCanManageBusiness(
+  membership: Awaited<ReturnType<typeof requireTenantContext>>["membership"],
+  redirectPath = "/app/calendar",
+) {
+  if (!canManageMembership(membership)) {
+    redirect(redirectPath);
   }
 }
 
@@ -395,9 +406,11 @@ export async function superAdminUpdatePlanAction(formData: FormData) {
 }
 
 export async function createCustomerAction(formData: FormData) {
-  const { membership } = await requireTenantContext();
+  const { user, membership } = await requireTenantContext();
   assertBusinessScope(formData, membership.businessId);
-  const branchId = assertUuid(formString(formData, "branchId"), "Şube");
+  const branchId = isStaffMembership(membership)
+    ? membership.branchId
+    : assertUuid(formString(formData, "branchId"), "Şube");
   const input = customerSchema.parse(formObject(formData));
   const admin = createSupabaseAdminClient();
   const { error } = await admin.rpc("rpc_create_customer", {
@@ -410,6 +423,8 @@ export async function createCustomerAction(formData: FormData) {
     customer_notes: input.notes ?? "",
     customer_kvkk_consent: input.kvkkConsent,
     customer_whatsapp_consent: input.whatsappConsent,
+    actor_profile_id: user.profile.id,
+    actor_can_manage: canManageMembership(membership),
   });
 
   if (error) {
@@ -421,14 +436,27 @@ export async function createCustomerAction(formData: FormData) {
 }
 
 export async function updateCustomerAction(formData: FormData) {
-  const { membership } = await requireTenantContext();
+  const { user, membership } = await requireTenantContext();
   assertBusinessScope(formData, membership.businessId);
   const input = customerUpdateSchema.parse(formObject(formData));
+  const dataset = await getTenantDataset(membership);
+  const customer = dataset.customers.find((item) => item.id === input.customerId);
+  const canUpdateCustomer =
+    canManageMembership(membership) ||
+    (isStaffMembership(membership) && customer?.createdBy === user.profile.id);
+
+  if (!canUpdateCustomer) {
+    redirect("/app/customers?error=yetkisiz-musteri");
+  }
+
+  const targetBranchId = isStaffMembership(membership)
+    ? membership.branchId
+    : input.branchId;
   const admin = createSupabaseAdminClient();
   const { error } = await admin.rpc("rpc_update_customer", {
     target_business_id: membership.businessId,
     target_customer_id: input.customerId,
-    target_branch_id: input.branchId,
+    target_branch_id: targetBranchId,
     customer_first_name: input.firstName,
     customer_last_name: input.lastName,
     customer_phone: input.phone,
@@ -436,6 +464,8 @@ export async function updateCustomerAction(formData: FormData) {
     customer_notes: input.notes ?? "",
     customer_kvkk_consent: input.kvkkConsent,
     customer_whatsapp_consent: input.whatsappConsent,
+    actor_profile_id: user.profile.id,
+    actor_can_manage: canManageMembership(membership),
   });
 
   if (error) {
@@ -447,13 +477,15 @@ export async function updateCustomerAction(formData: FormData) {
 }
 
 export async function deleteCustomerAction(formData: FormData) {
-  const { membership } = await requireTenantContext();
+  const { user, membership } = await requireTenantContext();
+  assertCanManageBusiness(membership, "/app/customers");
   assertBusinessScope(formData, membership.businessId);
   const input = deleteEntitySchema.parse({ id: formString(formData, "customerId") });
   const admin = createSupabaseAdminClient();
   const { error } = await admin.rpc("rpc_delete_customer", {
     target_business_id: membership.businessId,
     target_customer_id: input.id,
+    actor_profile_id: user.profile.id,
   });
 
   if (error) {
@@ -466,13 +498,13 @@ export async function deleteCustomerAction(formData: FormData) {
 
 export async function createServiceAction(formData: FormData) {
   const { membership } = await requireTenantContext();
+  assertCanManageBusiness(membership, "/app/services");
   assertBusinessScope(formData, membership.businessId);
   const input = serviceSchema.parse(formObject(formData));
   const admin = createSupabaseAdminClient();
   const { error } = await admin.rpc("rpc_create_service", {
     target_business_id: membership.businessId,
     service_name: input.name,
-    service_category: input.category,
     service_duration_minutes: input.durationMinutes,
     service_default_price_cents: input.defaultPriceCents,
     service_is_active: input.isActive,
@@ -488,6 +520,7 @@ export async function createServiceAction(formData: FormData) {
 
 export async function updateServiceAction(formData: FormData) {
   const { membership } = await requireTenantContext();
+  assertCanManageBusiness(membership, "/app/services");
   assertBusinessScope(formData, membership.businessId);
   const input = serviceUpdateSchema.parse(formObject(formData));
   const admin = createSupabaseAdminClient();
@@ -495,7 +528,6 @@ export async function updateServiceAction(formData: FormData) {
     target_business_id: membership.businessId,
     target_service_id: input.serviceId,
     service_name: input.name,
-    service_category: input.category,
     service_duration_minutes: input.durationMinutes,
     service_default_price_cents: input.defaultPriceCents,
     service_is_active: input.isActive,
@@ -511,6 +543,7 @@ export async function updateServiceAction(formData: FormData) {
 
 export async function deleteServiceAction(formData: FormData) {
   const { membership } = await requireTenantContext();
+  assertCanManageBusiness(membership, "/app/services");
   assertBusinessScope(formData, membership.businessId);
   const input = deleteEntitySchema.parse({ id: formString(formData, "serviceId") });
   const admin = createSupabaseAdminClient();
@@ -529,6 +562,7 @@ export async function deleteServiceAction(formData: FormData) {
 
 export async function createStaffAction(formData: FormData) {
   const { membership } = await requireTenantContext();
+  assertCanManageBusiness(membership, "/app/staff");
   assertBusinessScope(formData, membership.businessId);
   const input = staffCreateSchema.parse(formObject(formData));
   const dataset = await getTenantDataset(membership);
@@ -598,6 +632,7 @@ export async function createStaffAction(formData: FormData) {
 
 export async function updateStaffAction(formData: FormData) {
   const { membership } = await requireTenantContext();
+  assertCanManageBusiness(membership, "/app/staff");
   assertBusinessScope(formData, membership.businessId);
   const input = staffUpdateSchema.parse(formObject(formData));
   const admin = createSupabaseAdminClient();
@@ -650,6 +685,7 @@ export async function updateStaffAction(formData: FormData) {
 
 export async function deleteStaffAction(formData: FormData) {
   const { membership } = await requireTenantContext();
+  assertCanManageBusiness(membership, "/app/staff");
   assertBusinessScope(formData, membership.businessId);
   const input = deleteEntitySchema.parse({ id: formString(formData, "memberId") });
   const admin = createSupabaseAdminClient();
@@ -668,6 +704,7 @@ export async function deleteStaffAction(formData: FormData) {
 
 export async function createBranchAction(formData: FormData) {
   const { membership } = await requireTenantContext();
+  assertCanManageBusiness(membership, "/app/branches");
   assertBusinessScope(formData, membership.businessId);
   const input = branchSchema.parse(formObject(formData));
   const dataset = await getTenantDataset(membership);
@@ -697,6 +734,7 @@ export async function createBranchAction(formData: FormData) {
 
 export async function updateBranchAction(formData: FormData) {
   const { membership } = await requireTenantContext();
+  assertCanManageBusiness(membership, "/app/branches");
   assertBusinessScope(formData, membership.businessId);
   const input = branchUpdateSchema.parse(formObject(formData));
   const admin = createSupabaseAdminClient();
@@ -720,6 +758,7 @@ export async function updateBranchAction(formData: FormData) {
 
 export async function deleteBranchAction(formData: FormData) {
   const { membership } = await requireTenantContext();
+  assertCanManageBusiness(membership, "/app/branches");
   assertBusinessScope(formData, membership.businessId);
   const input = deleteEntitySchema.parse({ id: formString(formData, "branchId") });
   const dataset = await getTenantDataset(membership);
@@ -747,6 +786,7 @@ export async function deleteBranchAction(formData: FormData) {
 
 export async function updateStaffScheduleAction(formData: FormData) {
   const { membership } = await requireTenantContext();
+  assertCanManageBusiness(membership, "/app/schedule");
   assertBusinessScope(formData, membership.businessId);
   const input = staffScheduleSchema.parse(formObject(formData));
   const admin = createSupabaseAdminClient();
@@ -769,6 +809,7 @@ export async function updateStaffScheduleAction(formData: FormData) {
 
 export async function createProductAction(formData: FormData) {
   const { membership } = await requireTenantContext();
+  assertCanManageBusiness(membership, "/app/stock");
   assertBusinessScope(formData, membership.businessId);
   await assertModuleEnabled(membership, "stock", "/app/settings");
   const input = productCreateSchema.parse(formObject(formData));
@@ -794,6 +835,7 @@ export async function createProductAction(formData: FormData) {
 
 export async function updateProductAction(formData: FormData) {
   const { membership } = await requireTenantContext();
+  assertCanManageBusiness(membership, "/app/stock");
   assertBusinessScope(formData, membership.businessId);
   await assertModuleEnabled(membership, "stock", "/app/settings");
   const input = productUpdateSchema.parse(formObject(formData));
@@ -817,6 +859,7 @@ export async function updateProductAction(formData: FormData) {
 
 export async function deleteProductAction(formData: FormData) {
   const { membership } = await requireTenantContext();
+  assertCanManageBusiness(membership, "/app/stock");
   assertBusinessScope(formData, membership.businessId);
   await assertModuleEnabled(membership, "stock", "/app/settings");
   const input = deleteEntitySchema.parse({ id: formString(formData, "productId") });
@@ -836,6 +879,7 @@ export async function deleteProductAction(formData: FormData) {
 
 export async function createIncomeExpenseAction(formData: FormData) {
   const { membership } = await requireTenantContext();
+  assertCanManageBusiness(membership, "/app/finance");
   assertBusinessScope(formData, membership.businessId);
   await assertModuleEnabled(membership, "finance", "/app/settings");
   const input = incomeExpenseSchema.parse(formObject(formData));
@@ -861,6 +905,7 @@ export async function createIncomeExpenseAction(formData: FormData) {
 
 export async function updateIncomeExpenseAction(formData: FormData) {
   const { membership } = await requireTenantContext();
+  assertCanManageBusiness(membership, "/app/finance");
   assertBusinessScope(formData, membership.businessId);
   await assertModuleEnabled(membership, "finance", "/app/settings");
   const input = incomeExpenseUpdateSchema.parse(formObject(formData));
@@ -887,6 +932,7 @@ export async function updateIncomeExpenseAction(formData: FormData) {
 
 export async function deleteIncomeExpenseAction(formData: FormData) {
   const { membership } = await requireTenantContext();
+  assertCanManageBusiness(membership, "/app/finance");
   assertBusinessScope(formData, membership.businessId);
   await assertModuleEnabled(membership, "finance", "/app/settings");
   const input = deleteEntitySchema.parse({ id: formString(formData, "financeId") });
@@ -908,18 +954,33 @@ export async function createAppointmentAction(formData: FormData) {
   const { user, membership } = await requireTenantContext();
   assertBusinessScope(formData, membership.businessId);
   const input = appointmentFormSchema.parse(formObject(formData));
+  const targetBranchId = isStaffMembership(membership)
+    ? membership.branchId
+    : input.branchId;
+  const targetStaffId = isStaffMembership(membership)
+    ? membership.memberId
+    : input.staffId;
+
+  if (isStaffMembership(membership)) {
+    const dataset = await getTenantDataset(membership);
+
+    if (!dataset.customers.some((item) => item.id === input.customerId)) {
+      redirect("/app/calendar?error=yetkisiz-musteri");
+    }
+  }
+
   await assertAppointmentAvailability({
     membership,
     startsAt: input.startsAt,
-    staffId: input.staffId,
+    staffId: targetStaffId,
     serviceId: input.serviceId,
   });
   const admin = createSupabaseAdminClient();
   const { error } = await admin.rpc("rpc_create_appointment", {
     target_business_id: membership.businessId,
-    target_branch_id: input.branchId,
+    target_branch_id: targetBranchId,
     target_customer_id: input.customerId,
-    target_staff_member_id: input.staffId,
+    target_staff_member_id: targetStaffId,
     target_service_id: input.serviceId,
     appointment_starts_at: input.startsAt,
     appointment_status: input.status,
@@ -940,11 +1001,19 @@ export async function createAppointmentAction(formData: FormData) {
 export async function updateAppointmentAction(formData: FormData) {
   const { user, membership } = await requireTenantContext();
   assertBusinessScope(formData, membership.businessId);
+  assertCanManageBusiness(membership, "/app/calendar");
   const input = appointmentUpdateSchema.parse(formObject(formData));
+  const targetBranchId = isStaffMembership(membership)
+    ? membership.branchId
+    : input.branchId;
+  const targetStaffId = isStaffMembership(membership)
+    ? membership.memberId
+    : input.staffId;
+
   await assertAppointmentAvailability({
     membership,
     startsAt: input.startsAt,
-    staffId: input.staffId,
+    staffId: targetStaffId,
     serviceId: input.serviceId,
     ignoredAppointmentId: input.appointmentId,
   });
@@ -952,9 +1021,9 @@ export async function updateAppointmentAction(formData: FormData) {
   const { error } = await admin.rpc("rpc_update_appointment", {
     target_business_id: membership.businessId,
     target_appointment_id: input.appointmentId,
-    target_branch_id: input.branchId,
+    target_branch_id: targetBranchId,
     target_customer_id: input.customerId,
-    target_staff_member_id: input.staffId,
+    target_staff_member_id: targetStaffId,
     target_service_id: input.serviceId,
     appointment_starts_at: input.startsAt,
     appointment_status: input.status,
@@ -972,8 +1041,51 @@ export async function updateAppointmentAction(formData: FormData) {
   redirect("/app/calendar");
 }
 
+export async function updateAppointmentStatusAction(formData: FormData) {
+  const { user, membership } = await requireTenantContext();
+  assertBusinessScope(formData, membership.businessId);
+  const input = appointmentStatusUpdateSchema.parse(formObject(formData));
+  const returnDate = formString(formData, "returnDate");
+  const returnPath = /^\d{4}-\d{2}-\d{2}$/.test(returnDate)
+    ? `/app/daily?date=${returnDate}`
+    : "/app/daily";
+  const returnPathWithError = (message: string) =>
+    `${returnPath}${returnPath.includes("?") ? "&" : "?"}error=${encodeURIComponent(message)}`;
+  const dataset = await getTenantDataset(membership);
+  const appointment = dataset.appointments.find(
+    (item) => item.id === input.appointmentId,
+  );
+
+  if (!appointment) {
+    redirect(returnPathWithError("yetkisiz-randevu"));
+  }
+
+  if (isStaffMembership(membership) && appointment.staffId !== membership.memberId) {
+    redirect(returnPathWithError("yetkisiz-randevu"));
+  }
+
+  const admin = createSupabaseAdminClient();
+  const { error } = await admin.rpc("rpc_update_appointment_status", {
+    target_business_id: membership.businessId,
+    target_appointment_id: input.appointmentId,
+    appointment_status: input.status,
+    actor_profile_id: user.profile.id,
+  });
+
+  if (error) {
+    redirect(returnPathWithError(error.message));
+  }
+
+  revalidatePath("/app");
+  revalidatePath("/app/calendar");
+  revalidatePath("/app/daily");
+  revalidatePath("/app/finance");
+  redirect(returnPath);
+}
+
 export async function deleteAppointmentAction(formData: FormData) {
-  const { membership } = await requireTenantContext();
+  const { user, membership } = await requireTenantContext();
+  assertCanManageBusiness(membership, "/app/calendar");
   assertBusinessScope(formData, membership.businessId);
   const input = deleteEntitySchema.parse({
     id: formString(formData, "appointmentId"),
@@ -982,6 +1094,7 @@ export async function deleteAppointmentAction(formData: FormData) {
   const { error } = await admin.rpc("rpc_delete_appointment", {
     target_business_id: membership.businessId,
     target_appointment_id: input.id,
+    actor_profile_id: user.profile.id,
   });
 
   if (error) {
@@ -996,6 +1109,7 @@ export async function deleteAppointmentAction(formData: FormData) {
 
 export async function updateBusinessSettingsAction(formData: FormData) {
   const { membership } = await requireTenantContext();
+  assertCanManageBusiness(membership, "/app/settings");
   assertBusinessScope(formData, membership.businessId);
   const input = businessSettingsSchema.parse(formObject(formData));
   const admin = createSupabaseAdminClient();
@@ -1016,6 +1130,7 @@ export async function updateBusinessSettingsAction(formData: FormData) {
 
 export async function toggleModuleAction(formData: FormData) {
   const { membership } = await requireTenantContext();
+  assertCanManageBusiness(membership, "/app/settings");
   assertBusinessScope(formData, membership.businessId);
   const input = moduleToggleSchema.parse(formObject(formData));
   const admin = createSupabaseAdminClient();
@@ -1035,7 +1150,12 @@ export async function toggleModuleAction(formData: FormData) {
 }
 
 export async function updateProfileAction(formData: FormData) {
-  const { profile } = await requireUserContext();
+  const { profile, tenantMembership } = await requireUserContext();
+
+  if (tenantMembership && isStaffMembership(tenantMembership)) {
+    redirect("/app/calendar");
+  }
+
   assertUuid(formString(formData, "profileId"), "Profil");
   const input = profileSchema.parse(formObject(formData));
   const admin = createSupabaseAdminClient();

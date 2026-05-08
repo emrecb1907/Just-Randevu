@@ -1,10 +1,12 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 
 import { deleteCustomerAction, updateCustomerAction } from "@/app/actions";
 import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
 import { PhoneInput } from "@/components/phone-input";
+import { Select } from "@/components/ui/select";
 import { getTenantDataset, requireTenantContext } from "@/lib/app-data";
+import { canManageMembership, isStaffMembership } from "@/lib/roles";
 
 type EditCustomerPageProps = {
   params: Promise<{
@@ -14,13 +16,18 @@ type EditCustomerPageProps = {
 
 export default async function EditCustomerPage({ params }: EditCustomerPageProps) {
   const { customerId } = await params;
-  const { membership } = await requireTenantContext();
+  const { user, membership } = await requireTenantContext();
   const { business, branches, customers } = await getTenantDataset(membership);
   const customer = customers.find((item) => item.id === customerId);
   const primaryBranch = branches[0];
+  const staffView = isStaffMembership(membership);
 
   if (!customer) {
     notFound();
+  }
+
+  if (!canManageMembership(membership) && customer.createdBy !== user.profile.id) {
+    redirect("/app/customers?error=Bu müşteri kaydını sadece oluşturan personel düzenleyebilir.");
   }
 
   return (
@@ -30,9 +37,6 @@ export default async function EditCustomerPage({ params }: EditCustomerPageProps
         <h1 className="text-2xl font-semibold tracking-normal md:text-3xl">
           {customer.name}
         </h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          İletişim, izin ve şube bilgisi tek kayıt üzerinde güncellenir.
-        </p>
       </div>
       <form
         action={updateCustomerAction}
@@ -61,21 +65,26 @@ export default async function EditCustomerPage({ params }: EditCustomerPageProps
           />
         </label>
         <PhoneInput defaultValue={customer.phone} />
-        <label className="text-sm font-medium">
-          Şube
-          <select
+        {staffView ? (
+          <input
+            type="hidden"
             name="branchId"
-            required
-            defaultValue={customer.branchId || primaryBranch?.id}
-            className="mt-2 min-h-11 w-full rounded-xl border border-border bg-background px-3"
-          >
-            {branches.map((branch) => (
-              <option key={branch.id} value={branch.id}>
-                {branch.name}
-              </option>
-            ))}
-          </select>
-        </label>
+            value={customer.branchId || primaryBranch?.id}
+          />
+        ) : (
+          <label className="text-sm font-medium">
+            Şube
+            <Select
+              name="branchId"
+              required
+              defaultValue={customer.branchId || primaryBranch?.id}
+              options={branches.map((branch) => ({
+                value: branch.id,
+                label: branch.name,
+              }))}
+            />
+          </label>
+        )}
         <label className="text-sm font-medium">
           E-posta
           <input
@@ -130,17 +139,19 @@ export default async function EditCustomerPage({ params }: EditCustomerPageProps
           </ConfirmSubmitButton>
         </div>
       </form>
-      <form action={deleteCustomerAction} className="rounded-[24px] border border-red-200 bg-red-50 p-4">
-        <input type="hidden" name="businessId" value={business.id} />
-        <input type="hidden" name="customerId" value={customer.id} />
-        <ConfirmSubmitButton
-          title="Müşteri silinsin mi?"
-          description="Müşteri pasife alınacak; geçmiş randevu kayıtları korunacak."
-          className="inline-flex min-h-10 items-center justify-center rounded-xl border border-red-200 bg-white px-3 text-sm font-semibold text-red-700"
-        >
-          Müşteriyi sil
-        </ConfirmSubmitButton>
-      </form>
+      {staffView ? null : (
+        <form action={deleteCustomerAction} className="rounded-[24px] border border-red-200 bg-red-50 p-4">
+          <input type="hidden" name="businessId" value={business.id} />
+          <input type="hidden" name="customerId" value={customer.id} />
+          <ConfirmSubmitButton
+            title="Müşteri silinsin mi?"
+            description="Müşteri pasife alınacak; geçmiş randevu kayıtları korunacak."
+            className="inline-flex min-h-10 items-center justify-center rounded-xl border border-red-200 bg-white px-3 text-sm font-semibold text-red-700"
+          >
+            Müşteriyi sil
+          </ConfirmSubmitButton>
+        </form>
+      )}
     </div>
   );
 }

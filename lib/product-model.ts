@@ -6,6 +6,7 @@ import {
   CalendarClock,
   CalendarDays,
   ClipboardCheck,
+  ClipboardList,
   CreditCard,
   FileText,
   HandCoins,
@@ -156,7 +157,7 @@ export const modules: ModuleDefinition[] = [
   {
     key: "performance",
     name: "Personel Performansı",
-    description: "Doluluk, gelir, işlem adedi, iptal ve gelmedi oranları.",
+    description: "Doluluk, gelir, işlem adedi, İptal ve Gelmedi oranları.",
     category: "premium",
     availability: "planned",
     icon: BarChart3,
@@ -259,6 +260,12 @@ export const navigation = [
     label: "Takvim",
     href: "/app/calendar",
     icon: CalendarDays,
+    moduleKey: "appointments",
+  },
+  {
+    label: "Günlük İşlemler",
+    href: "/app/daily",
+    icon: ClipboardList,
     moduleKey: "appointments",
   },
   {

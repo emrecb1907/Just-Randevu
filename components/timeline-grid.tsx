@@ -19,8 +19,10 @@ export type TimelineEvent = {
   endsAt: string;
   title: string;
   meta?: string;
+  details?: { label: string; value: string }[];
   tone?: TimelineEventTone;
   href?: string;
+  actionLabel?: string;
   subtle?: boolean;
 };
 
@@ -110,7 +112,7 @@ export function TimelineGrid({
                 key={column.id}
                 className={cn(
                   "border-r border-border px-4 py-3 text-center last:border-r-0",
-                  column.muted && "bg-muted/50",
+                  column.muted && "bg-accent/10 text-accent",
                 )}
               >
                 <p className="text-xs font-bold uppercase text-muted-foreground">
@@ -144,7 +146,7 @@ export function TimelineGrid({
                 key={column.id}
                 className={cn(
                   "relative border-r border-border last:border-r-0",
-                  column.muted && "bg-muted/30",
+                  column.muted && "bg-accent/5",
                 )}
               >
                 {labels.slice(0, -1).map((label) => (
@@ -223,33 +225,58 @@ export function TimelineGrid({
                         </div>
                       </>
                     );
+                    const detailRows = event.details ?? [
+                      { label: "Saat", value: `${event.startsAt} - ${event.endsAt}` },
+                      { label: "Kayıt", value: event.title },
+                      ...(event.meta ? [{ label: "Detay", value: event.meta }] : []),
+                    ];
 
                     const eventStyle = {
                       top: Math.max(8, top + 8),
                       height: Math.max(96, height - 10),
-                      zIndex: event.subtle ? 1 : 5,
                     };
 
                     return event.href ? (
-                      <Link
+                      <div
                         key={event.id}
-                        href={event.href}
+                        tabIndex={0}
                         className={cn(
-                          "absolute left-2 right-2 overflow-hidden rounded-2xl border text-xs shadow-sm transition hover:-translate-y-0.5 hover:shadow-md",
+                          "group absolute left-2 right-2 z-[5] rounded-2xl border text-xs shadow-sm outline-none transition hover:z-[80] hover:-translate-y-0.5 hover:shadow-md focus-within:z-[80] focus-visible:ring-4 focus-visible:ring-primary/15",
                           toneClass[event.tone ?? "blue"],
-                          event.subtle && "opacity-70 shadow-none",
+                          event.subtle && "z-[1] opacity-70 shadow-none",
                         )}
                         style={eventStyle}
                       >
-                        {content}
-                      </Link>
+                        <div className="h-full overflow-hidden rounded-2xl">
+                          {content}
+                        </div>
+                        <div className="pointer-events-none absolute left-0 top-[calc(100%+8px)] z-[90] w-72 rounded-2xl border border-border bg-surface p-3 text-foreground opacity-0 shadow-panel transition group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100">
+                          <div className="space-y-2">
+                            {detailRows.map((row) => (
+                              <div
+                                key={`${event.id}-${row.label}`}
+                                className="grid grid-cols-[72px_1fr] gap-2 text-xs"
+                              >
+                                <span className="text-muted-foreground">{row.label}</span>
+                                <span className="font-semibold">{row.value}</span>
+                              </div>
+                            ))}
+                          </div>
+                          <Link
+                            href={event.href}
+                            className="mt-3 inline-flex min-h-9 items-center justify-center rounded-xl bg-primary px-3 text-xs font-bold text-white"
+                          >
+                            {event.actionLabel ?? "Detaya git"}
+                          </Link>
+                        </div>
+                      </div>
                     ) : (
                       <div
                         key={event.id}
                         className={cn(
-                          "absolute left-2 right-2 overflow-hidden rounded-2xl border text-xs shadow-sm",
+                          "absolute left-2 right-2 z-[5] overflow-hidden rounded-2xl border text-xs shadow-sm",
                           toneClass[event.tone ?? "blue"],
-                          event.subtle && "opacity-70 shadow-none",
+                          event.subtle && "z-[1] opacity-70 shadow-none",
                         )}
                         style={eventStyle}
                       >

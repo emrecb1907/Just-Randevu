@@ -3,14 +3,17 @@ import { Pencil, Plus } from "lucide-react";
 import { redirect } from "next/navigation";
 
 import { getTenantDataset, requireTenantContext } from "@/lib/app-data";
+import { isStaffMembership } from "@/lib/roles";
+import { financeSourceLabel, financeTypeLabel } from "@/lib/status-labels";
 import { formatCurrency } from "@/lib/utils";
 
 export default async function FinancePage() {
   const { membership } = await requireTenantContext();
   const { financeSummary, financeRows, activeModules } = await getTenantDataset(membership);
+  const staffView = isStaffMembership(membership);
 
   if (!activeModules.includes("finance")) {
-    redirect("/app/settings");
+    redirect(staffView ? "/app/calendar" : "/app/settings");
   }
   const rows = [
     ["Günlük gelir", financeSummary.dailyRevenueCents],
@@ -26,18 +29,16 @@ export default async function FinancePage() {
           <h1 className="text-2xl font-semibold tracking-normal md:text-3xl">
             Finans
           </h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Manuel kayıt ve düzenleme ayrı sayfalarda; otomatik randevu gelirleri
-            kayıt listesinde izlenir.
-          </p>
         </div>
-        <Link
-          href="/app/finance/new"
-          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-bold text-white shadow-sm"
-        >
-          <Plus size={16} />
-          Yeni kayıt
-        </Link>
+        {staffView ? null : (
+          <Link
+            href="/app/finance/new"
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-bold text-white shadow-sm"
+          >
+            <Plus size={16} />
+            Yeni kayıt
+          </Link>
+        )}
       </div>
       <section className="rounded-[24px] border border-border bg-surface p-4">
         <div className="grid gap-3 md:grid-cols-3">
@@ -57,29 +58,33 @@ export default async function FinancePage() {
       <section className="overflow-hidden rounded-[24px] border border-border bg-surface">
         <div className="overflow-x-auto">
           <div className="min-w-[560px]">
-            <div className="grid grid-cols-[1fr_1fr_1fr_1fr_52px] border-b border-border bg-muted/50 p-3 text-xs font-semibold text-muted-foreground">
+            <div className={staffView ? "grid grid-cols-4 border-b border-border bg-muted/50 p-3 text-xs font-semibold text-muted-foreground" : "grid grid-cols-[1fr_1fr_1fr_1fr_52px] border-b border-border bg-muted/50 p-3 text-xs font-semibold text-muted-foreground"}>
               <span>Tip</span>
               <span>Kategori</span>
               <span>Tutar</span>
               <span>Kaynak</span>
-              <span />
+              {staffView ? null : <span />}
             </div>
             {financeRows.map((entry) => (
               <article
                 key={entry.id}
-                className="grid grid-cols-[1fr_1fr_1fr_1fr_52px] gap-3 border-b border-border p-3 text-sm last:border-b-0"
+                className={staffView ? "grid grid-cols-4 gap-3 border-b border-border p-3 text-sm last:border-b-0" : "grid grid-cols-[1fr_1fr_1fr_1fr_52px] gap-3 border-b border-border p-3 text-sm last:border-b-0"}
               >
-                <span className="font-semibold">{entry.type}</span>
+                <span className="font-semibold">{financeTypeLabel(entry.type)}</span>
                 <span>{entry.category}</span>
                 <span>{formatCurrency(entry.amountCents)}</span>
-                <span className="text-muted-foreground">{entry.source}</span>
-                <Link
-                  href={`/app/finance/${entry.id}/edit`}
-                  className="grid size-10 place-items-center rounded-xl border border-border bg-background text-muted-foreground hover:text-foreground"
-                  aria-label={`${entry.category} düzenle`}
-                >
-                  <Pencil size={16} />
-                </Link>
+                <span className="text-muted-foreground">
+                  {financeSourceLabel(entry.source)}
+                </span>
+                {staffView ? null : (
+                  <Link
+                    href={`/app/finance/${entry.id}/edit`}
+                    className="grid size-10 place-items-center rounded-xl border border-border bg-background text-muted-foreground hover:text-foreground"
+                    aria-label={`${entry.category} düzenle`}
+                  >
+                    <Pencil size={16} />
+                  </Link>
+                )}
               </article>
             ))}
             {financeRows.length === 0 ? (

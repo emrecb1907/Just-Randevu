@@ -80,6 +80,16 @@
   outline-offset: 2px;
 }
 
+input:focus,
+input:focus-visible,
+select:focus,
+select:focus-visible,
+textarea:focus,
+textarea:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
 .app-grid {
   background-image:
     linear-gradient(to right, hsl(var(--border)) 1px, transparent 1px),

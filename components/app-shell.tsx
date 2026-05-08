@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation";
 import type { CSSProperties, ReactNode } from "react";
 import { useState } from "react";
 import {
-  ChevronDown,
   LogOut,
   Menu,
   PanelLeftClose,
@@ -19,7 +18,8 @@ import { logoutAction } from "@/app/actions";
 import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { navigation, systemNavigation } from "@/lib/product-model";
-import type { ModuleKey } from "@/lib/product-model";
+import type { ModuleKey, RoleKey } from "@/lib/product-model";
+import { isStaffRole } from "@/lib/roles";
 import { cn } from "@/lib/utils";
 
 type AppShellProps = {
@@ -29,6 +29,7 @@ type AppShellProps = {
   currentUserEmail: string;
   isSuperAdmin: boolean;
   activeModules: ModuleKey[];
+  role: RoleKey | undefined;
 };
 
 export function AppShell({
@@ -38,6 +39,7 @@ export function AppShell({
   currentUserEmail,
   isSuperAdmin,
   activeModules = [],
+  role,
 }: AppShellProps) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
@@ -45,8 +47,20 @@ export function AppShell({
   const navItems = isSuperAdmin
     ? systemNavigation
     : navigation.filter(
-        (item) => !item.moduleKey || activeModules.includes(item.moduleKey),
+        (item) =>
+          (!item.moduleKey || activeModules.includes(item.moduleKey)) &&
+          (!(role && isStaffRole(role)) ||
+            [
+              "/app",
+              "/app/calendar",
+              "/app/daily",
+              "/app/customers",
+              "/app/finance",
+            ].includes(item.href)),
       );
+  const sidebarItems = isSuperAdmin
+    ? navItems
+    : navItems.filter((item) => item.href !== "/app/settings");
   const activeHref = navItems
     .filter(
       (item) =>
@@ -54,37 +68,6 @@ export function AppShell({
         (item.href !== "/app" && pathname.startsWith(`${item.href}/`)),
     )
     .sort((left, right) => right.href.length - left.href.length)[0]?.href;
-  const navGroups = isSuperAdmin
-    ? [{ title: "Platform", items: navItems }]
-    : [
-        {
-          title: "Genel",
-          items: navItems.filter((item) => item.href === "/app"),
-        },
-        {
-          title: "Randevu",
-          items: navItems.filter((item) =>
-            ["/app/calendar", "/app/schedule"].includes(item.href),
-          ),
-        },
-        {
-          title: "Operasyon",
-          items: navItems.filter((item) =>
-            [
-              "/app/customers",
-              "/app/staff",
-              "/app/services",
-              "/app/branches",
-              "/app/stock",
-            ].includes(item.href),
-          ),
-        },
-        {
-          title: "Finans",
-          items: navItems.filter((item) => item.href === "/app/finance"),
-        },
-      ].filter((group) => group.items.length > 0);
-  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
   const sidebarWidth = collapsed ? 84 : 236;
 
   const sidebar = (mobile = false) => (
@@ -139,64 +122,30 @@ export function AppShell({
         )}
       </div>
 
-      <nav className="min-h-0 flex-1 space-y-2 overflow-y-auto overflow-x-hidden pb-4 pr-1">
-        {navGroups.map((group) => {
-          const groupOpen = collapsed && !mobile ? true : openGroups[group.title] === true;
+      <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto overflow-x-hidden pb-4 pr-1">
+        {sidebarItems.map((item) => {
+          const Icon = item.icon;
+          const active = activeHref === item.href;
 
           return (
-            <div key={group.title}>
-              {collapsed && !mobile ? null : (
-                <button
-                  type="button"
-                  className="mb-1 flex min-h-10 w-full items-center justify-between rounded-xl px-3 text-left text-[11px] font-bold uppercase tracking-normal text-muted-foreground transition hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/25 focus-visible:ring-inset"
-                  aria-expanded={groupOpen}
-                  onClick={() =>
-                    setOpenGroups((current) => ({
-                      ...current,
-                      [group.title]: current[group.title] !== true,
-                    }))
-                  }
-                >
-                  <span>{group.title}</span>
-                  <ChevronDown
-                    size={15}
-                    className={cn(
-                      "transition-transform",
-                      groupOpen && "rotate-180",
-                    )}
-                  />
-                </button>
+            <Link
+              key={item.href}
+              href={item.href}
+              title={collapsed && !mobile ? item.label : undefined}
+              aria-label={item.label}
+              onClick={() => setMobileOpen(false)}
+              className={cn(
+                "flex min-h-11 min-w-0 items-center gap-3 rounded-xl px-3 text-sm font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground",
+                active && "bg-primary/10 text-primary shadow-sm",
+                collapsed && !mobile && "justify-center px-0",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/25 focus-visible:ring-inset",
               )}
-              {groupOpen ? (
-                <div className="space-y-1">
-                  {group.items.map((item) => {
-                const Icon = item.icon;
-                const active = activeHref === item.href;
-
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    title={collapsed && !mobile ? item.label : undefined}
-                    aria-label={item.label}
-                    onClick={() => setMobileOpen(false)}
-                    className={cn(
-                      "flex min-h-11 min-w-0 items-center gap-3 rounded-xl px-3 text-sm font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground",
-                      active && "bg-primary/10 text-primary shadow-sm",
-                      collapsed && !mobile && "justify-center px-0",
-                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/25 focus-visible:ring-inset",
-                    )}
-                  >
-                    <Icon size={18} className="shrink-0" />
-                    {collapsed && !mobile ? null : (
-                      <span className="truncate">{item.label}</span>
-                    )}
-                  </Link>
-                );
-                  })}
-                </div>
-              ) : null}
-            </div>
+            >
+              <Icon size={18} className="shrink-0" />
+              {collapsed && !mobile ? null : (
+                <span className="truncate">{item.label}</span>
+              )}
+            </Link>
           );
         })}
       </nav>
@@ -244,7 +193,7 @@ export function AppShell({
         <header className="sticky top-16 z-20 flex min-h-16 shrink-0 min-w-0 items-center gap-3 border-b border-border bg-surface/95 px-4 backdrop-blur lg:static lg:px-7">
           <div className="ml-auto flex min-w-0 items-center gap-2">
             <ThemeToggle />
-            {isSuperAdmin ? null : (
+            {isSuperAdmin || (role && isStaffRole(role)) ? null : (
               <Link
                 href="/app/settings"
                 className="grid min-h-11 min-w-11 place-items-center rounded-xl border border-border bg-background text-muted-foreground transition hover:border-primary hover:text-primary"
@@ -254,14 +203,16 @@ export function AppShell({
                 <Store size={18} />
               </Link>
             )}
-            <Link
-              href="/app/profile"
-              className="grid min-h-11 min-w-11 place-items-center rounded-xl border border-border bg-background text-muted-foreground transition hover:border-primary hover:text-primary"
-              aria-label="Hesabım"
-              title={`${currentUserName} · ${currentUserEmail}`}
-            >
-              <UserRound size={19} />
-            </Link>
+            {role && isStaffRole(role) ? null : (
+              <Link
+                href="/app/profile"
+                className="grid min-h-11 min-w-11 place-items-center rounded-xl border border-border bg-background text-muted-foreground transition hover:border-primary hover:text-primary"
+                aria-label="Hesabım"
+                title={`${currentUserName} · ${currentUserEmail}`}
+              >
+                <UserRound size={19} />
+              </Link>
+            )}
             <form action={logoutAction}>
               <ConfirmSubmitButton
                 title="Çıkış yapılsın mı?"

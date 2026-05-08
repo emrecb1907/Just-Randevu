@@ -3,6 +3,7 @@ import { ArrowLeft } from "lucide-react";
 
 import { superAdminUpdatePlanAction } from "@/app/actions";
 import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
+import { Select } from "@/components/ui/select";
 import { getSystemDataset, requireSuperAdminContext } from "@/lib/app-data";
 import { formatCurrency } from "@/lib/utils";
 
@@ -22,10 +23,6 @@ export default async function SuperAdminPlansPage() {
           <h1 className="text-2xl font-semibold tracking-normal md:text-3xl">
             Paket Yönetimi
           </h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Paket fiyatlarını, şube limitlerini ve personel haklarını işletme
-            listesinden ayrı yönetin.
-          </p>
         </div>
         <Link
           href="/app/super-admin"
@@ -88,14 +85,14 @@ export default async function SuperAdminPlansPage() {
               </label>
               <label className="text-sm font-medium">
                 Personel kapsamı
-                <select
+                <Select
                   name="staffLimitScope"
                   defaultValue={plan.staffLimitScope}
-                  className="mt-2 min-h-11 w-full rounded-xl border border-border bg-background px-3"
-                >
-                  <option value="business">İşletme toplamı</option>
-                  <option value="branch">Şube başı</option>
-                </select>
+                  options={[
+                    { value: "business", label: "İşletme toplamı" },
+                    { value: "branch", label: "Şube başı" },
+                  ]}
+                />
               </label>
             </div>
 

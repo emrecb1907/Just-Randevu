@@ -7,16 +7,15 @@ import {
   WalletCards,
 } from "lucide-react";
 
-import { CalendarBoard } from "@/components/calendar-board";
 import { MetricCard } from "@/components/metric-card";
-import { ModuleCard } from "@/components/module-card";
 import {
   getSystemDataset,
   getTenantDataset,
   requireTenantContext,
   requireUserContext,
 } from "@/lib/app-data";
-import { modules } from "@/lib/product-model";
+import { isStaffMembership } from "@/lib/roles";
+import { appointmentStatusLabel, subscriptionStatusLabel } from "@/lib/status-labels";
 import { formatCurrency } from "@/lib/utils";
 
 function formatDateKey(date: Date) {
@@ -40,9 +39,6 @@ export default async function AppPage() {
             <h1 className="text-2xl font-semibold tracking-normal md:text-3xl">
               Platform Yönetimi
             </h1>
-            <p className="mt-2 text-sm text-muted-foreground">
-              İşletmeler, abonelikler, paket gelirleri ve modül kataloğu.
-            </p>
           </div>
         </div>
 
@@ -89,7 +85,7 @@ export default async function AppPage() {
                 >
                   <span className="font-semibold">{business.name}</span>
                   <span>{business.plan === "premium" ? "Premium" : "Standart"}</span>
-                  <span>{business.subscriptionStatus}</span>
+                  <span>{subscriptionStatusLabel(business.subscriptionStatus)}</span>
                   <span>
                     {business.branchCount} şube · {business.memberCount} kullanıcı
                   </span>
@@ -108,16 +104,15 @@ export default async function AppPage() {
   }
 
   const { membership } = await requireTenantContext();
+  const staffView = isStaffMembership(membership);
   const tenant = await getTenantDataset(membership);
   const {
     business,
     financeSummary,
-    staffMembers,
     appointments,
     customers,
     stockItems,
     activeModules,
-    branches,
   } = tenant;
   const criticalStockCount = stockItems.filter(
     (item) => item.stock <= item.critical,
@@ -126,55 +121,22 @@ export default async function AppPage() {
   const todayAppointments = appointments.filter(
     (appointment) => appointment.dateKey === todayKey,
   );
-  const branchUsagePercent =
-    business.branchLimit > 0
-      ? Math.min(100, Math.round((branches.length / business.branchLimit) * 100))
-      : 0;
-  const staffUsagePercent =
-    business.staffLimitPerBranch > 0
-      ? Math.min(
-          100,
-          Math.round(
-            ((business.staffLimitScope === "branch"
-              ? Math.max(
-                  0,
-                  ...branches.map(
-                    (branch) =>
-                      staffMembers.filter((staff) => staff.branchId === branch.id)
-                        .length,
-                  ),
-                )
-              : staffMembers.length) /
-              business.staffLimitPerBranch) *
-              100,
-          ),
-        )
-      : 0;
-  const staffUsageCount =
-    business.staffLimitScope === "branch"
-      ? Math.max(
-          0,
-          ...branches.map(
-            (branch) =>
-              staffMembers.filter((staff) => staff.branchId === branch.id).length,
-          ),
-        )
-      : staffMembers.length;
-
+  const completedAppointments = appointments.filter(
+    (appointment) => appointment.status === "tamamlandı",
+  );
+  const upcomingAppointments = appointments.filter(
+    (appointment) =>
+      appointment.status === "bekliyor" &&
+      !Number.isNaN(new Date(appointment.startsAt).getTime()) &&
+      new Date(appointment.startsAt) >= new Date(),
+  );
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <div>
-          <p className="text-sm font-semibold text-primary">
-            {business.plan === "premium" ? "Premium" : "Standart"} ·{" "}
-            {branches.length} şube
-          </p>
           <h1 className="text-2xl font-semibold tracking-normal md:text-3xl">
             Operasyon Paneli
           </h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Randevu, personel, müşteri, stok, finans ve paket kullanım özeti.
-          </p>
         </div>
         <div className="rounded-xl border border-border bg-surface px-3 py-2 text-sm shadow-sm">
           Çalışma saati:{" "}
@@ -188,13 +150,13 @@ export default async function AppPage() {
         <MetricCard
           label="Bugünkü randevu"
           value={String(todayAppointments.length)}
-          hint={`${todayAppointments.filter((appointment) => appointment.status === "iptal").length} iptal · ${todayAppointments.filter((appointment) => appointment.status === "gelmedi").length} gelmedi`}
+          hint={`${todayAppointments.filter((appointment) => appointment.status === "iptal").length} ${appointmentStatusLabel("iptal")} · ${todayAppointments.filter((appointment) => appointment.status === "gelmedi").length} ${appointmentStatusLabel("gelmedi")}`}
           icon={CalendarDays}
         />
         <MetricCard
-          label="Aktif müşteri"
-          value={String(customers.length)}
-          hint="Telefon benzersizliği işletme bazlı"
+          label={staffView ? "Tamamlanan iş" : "Aktif müşteri"}
+          value={String(staffView ? completedAppointments.length : customers.length)}
+          hint={staffView ? "Size atanmış tamamlanan randevular" : "Telefon benzersizliği işletme bazlı"}
           icon={Users}
         />
         <MetricCard
@@ -204,101 +166,18 @@ export default async function AppPage() {
           icon={WalletCards}
         />
         <MetricCard
-          label="Kritik stok"
-          value={String(criticalStockCount)}
+          label={staffView ? "Yaklaşan randevu" : "Kritik stok"}
+          value={String(staffView ? upcomingAppointments.length : criticalStockCount)}
           hint={
-            activeModules.includes("stock")
-              ? "Kritik eşiğe göre hesaplanır"
-              : "Stok modülü kapalı"
+            staffView
+              ? "Henüz tamamlanmamış gelecek randevular"
+              : activeModules.includes("stock")
+                ? "Kritik eşiğe göre hesaplanır"
+                : "Stok modülü kapalı"
           }
-          icon={PackageCheck}
+          icon={staffView ? CalendarDays : PackageCheck}
         />
       </div>
-
-      <CalendarBoard
-        appointments={appointments}
-        opensAt={business.opensAt}
-        closesAt={business.closesAt}
-      />
-
-      <section className="grid gap-4 xl:grid-cols-[1fr_360px]">
-        <div className="rounded-[24px] border border-border bg-surface p-4 shadow-panel">
-          <h2 className="text-lg font-semibold">Personel Performansı</h2>
-          <div className="mt-4 space-y-3">
-            {staffMembers.map((staff) => (
-              <div key={staff.id}>
-                <div className="mb-2 flex items-center justify-between text-sm">
-                  <span className="font-medium">{staff.name}</span>
-                  <span className="text-muted-foreground">
-                    {staff.utilization}%
-                  </span>
-                </div>
-                <div className="h-2 overflow-hidden rounded-full bg-muted">
-                  <div
-                    className="h-full rounded-full bg-primary"
-                    style={{ width: `${staff.utilization}%` }}
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-        <div className="rounded-[24px] border border-border bg-surface p-4 shadow-panel">
-          <h2 className="text-lg font-semibold">Paket Kullanımı</h2>
-          <div className="mt-4 space-y-4 text-sm">
-            <div>
-              <div className="flex justify-between">
-                <span>Şube</span>
-                <span className="font-semibold">
-                  {branches.length} / {business.branchLimit}
-                </span>
-              </div>
-              <div className="mt-2 h-2 rounded-full bg-muted">
-                <div
-                  className="h-2 rounded-full bg-primary"
-                  style={{ width: `${branchUsagePercent}%` }}
-                />
-              </div>
-            </div>
-            <div>
-              <div className="flex justify-between">
-                <span>
-                  {business.staffLimitScope === "branch"
-                    ? "En yoğun şube personeli"
-                    : "Personel"}
-                </span>
-                <span className="font-semibold">
-                  {staffUsageCount} / {business.staffLimitPerBranch}
-                </span>
-              </div>
-              <div className="mt-2 h-2 rounded-full bg-muted">
-                <div
-                  className="h-2 rounded-full bg-accent"
-                  style={{ width: `${staffUsagePercent}%` }}
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section>
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Modül Durumu</h2>
-          <p className="text-sm text-muted-foreground">
-            Paket + işletme aç/kapat kontrolü
-          </p>
-        </div>
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {modules.map((module) => (
-            <ModuleCard
-              key={module.key}
-              module={module}
-              activeModules={activeModules}
-            />
-          ))}
-        </div>
-      </section>
     </div>
   );
 }

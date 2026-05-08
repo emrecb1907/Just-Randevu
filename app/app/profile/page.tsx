@@ -1,10 +1,18 @@
+import { redirect } from "next/navigation";
+
 import { updateProfileAction } from "@/app/actions";
 import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
 import { PhoneInput } from "@/components/phone-input";
+import { Select } from "@/components/ui/select";
 import { requireUserContext } from "@/lib/app-data";
+import { isStaffMembership } from "@/lib/roles";
 
 export default async function ProfilePage() {
-  const { profile } = await requireUserContext();
+  const { profile, tenantMembership } = await requireUserContext();
+
+  if (tenantMembership && isStaffMembership(tenantMembership)) {
+    redirect("/app/calendar");
+  }
 
   return (
     <div className="space-y-6">
@@ -13,10 +21,6 @@ export default async function ProfilePage() {
         <h1 className="text-2xl font-semibold tracking-normal md:text-3xl">
           Hesap ve Profil
         </h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Hesapta görünen adınızı, iletişim bilgilerinizi ve tema tercihinizi
-          düzenleyin.
-        </p>
       </div>
       <form
         action={updateProfileAction}
@@ -70,15 +74,15 @@ export default async function ProfilePage() {
         </label>
         <label className="text-sm font-medium">
           Tema
-          <select
+          <Select
             name="theme"
             required
-            className="mt-2 min-h-11 w-full rounded-xl border border-border bg-background px-3"
             defaultValue={profile.theme === "dark" ? "dark" : "light"}
-          >
-            <option value="light">Light</option>
-            <option value="dark">Dark</option>
-          </select>
+            options={[
+              { value: "light", label: "Açık" },
+              { value: "dark", label: "Koyu" },
+            ]}
+          />
         </label>
         <div className="flex items-end md:col-span-2">
           <ConfirmSubmitButton
