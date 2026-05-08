@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import type { ReactNode } from "react";
 
+import { ToastViewport } from "@/components/toast-viewport";
+
 import "./globals.css";
 
 const helvena = localFont({
@@ -67,6 +69,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     <html lang="tr" data-scroll-behavior="smooth" suppressHydrationWarning>
       <body className={`${helvena.variable} font-sans antialiased`}>
         {children}
+        <ToastViewport />
       </body>
     </html>
   );

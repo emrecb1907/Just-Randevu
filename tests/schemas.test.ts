@@ -38,7 +38,6 @@ describe("Zod validation rules", () => {
         phone: "05343435432",
         password: "12Tz1993!!",
         plan: "premium",
-        slotMinutes: "10",
         kvkkConsent: "on",
       }).phone,
     ).toBe("+905343435432");

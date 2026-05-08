@@ -1,20 +1,26 @@
 "use client";
 
+import { useRef, useState } from "react";
 import Link from "next/link";
 import {
   Apple,
   ArrowRight,
   BarChart3,
+  Building2,
   CalendarDays,
   Check,
+  Clock3,
+  CreditCard,
   Mail,
   Phone,
   UserRound,
 } from "lucide-react";
 
 import { loginAction, registerBusinessAction } from "@/app/actions";
-import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
 import { PasswordField } from "@/components/password-field";
+import { plans } from "@/lib/product-model";
+import type { PlanKey } from "@/lib/product-model";
+import { formatCurrency } from "@/lib/utils";
 
 type AuthMode = "login" | "register";
 
@@ -29,6 +35,37 @@ const visualRows = [
   { time: "09:00", title: "Hizmet", staff: "Personel", tone: "blue" },
   { time: "12:00", title: "Bakım", staff: "Ekip", tone: "green" },
   { time: "14:30", title: "Görüşme", staff: "Uzman", tone: "yellow" },
+];
+
+const registerSteps = [
+  {
+    title: "Hesap",
+    description: "E-posta, telefon ve şifre",
+    eyebrow: "Giriş hesabı",
+  },
+  {
+    title: "İşletme",
+    description: "Yetkili, işletme ve mesai",
+    eyebrow: "İşletme profili",
+  },
+  {
+    title: "Ödeme",
+    description: "Paket ve ödeme onayı",
+    eyebrow: "Abonelik",
+  },
+];
+
+const timeOptions = [
+  "08:00",
+  "08:30",
+  "09:00",
+  "09:30",
+  "10:00",
+  "18:00",
+  "19:00",
+  "20:00",
+  "21:00",
+  "22:00",
 ];
 
 function normalizeVisiblePhone(value: string) {
@@ -47,8 +84,51 @@ function normalizeVisiblePhone(value: string) {
 
 export function AuthPanel({ mode }: { mode: AuthMode }) {
   const isRegister = mode === "register";
-  const formSpacing = isRegister ? "mt-4 space-y-2.5" : "mt-6 space-y-3";
+  const [registerStep, setRegisterStep] = useState(0);
+  const [selectedPlan, setSelectedPlan] = useState<PlanKey>("premium");
+  const accountStepRef = useRef<HTMLDivElement>(null);
+  const businessStepRef = useRef<HTMLDivElement>(null);
+  const paymentStepRef = useRef<HTMLDivElement>(null);
+  const stepRefs = [accountStepRef, businessStepRef, paymentStepRef] as const;
+  const formSpacing = isRegister ? "mt-5" : "mt-6 space-y-3";
   const dividerSpacing = isRegister ? "my-3" : "my-4";
+  const activePlan = plans[selectedPlan];
+  const activeStep = registerSteps[registerStep];
+
+  const validateCurrentRegisterStep = () => {
+    const currentStep = stepRefs[registerStep]?.current;
+
+    if (!currentStep) {
+      return true;
+    }
+
+    const fields = currentStep.querySelectorAll<
+      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+    >("input, select, textarea");
+
+    for (const field of fields) {
+      if (field instanceof HTMLInputElement && field.type === "hidden") {
+        continue;
+      }
+
+      if (!field.reportValidity()) {
+        return false;
+      }
+    }
+
+    return true;
+  };
+
+  const goToRegisterStep = (nextStep: number) => {
+    if (nextStep <= registerStep) {
+      setRegisterStep(nextStep);
+      return;
+    }
+
+    if (validateCurrentRegisterStep()) {
+      setRegisterStep(nextStep);
+    }
+  };
 
   return (
     <main className="relative isolate grid min-h-dvh place-items-center overflow-y-auto bg-[#EEF0F2] px-4 py-4 text-[#111111] dark:bg-[#07100B] dark:text-white sm:px-6 lg:p-3 xl:p-4">
@@ -88,168 +168,440 @@ export function AuthPanel({ mode }: { mode: AuthMode }) {
 
               <form
                 action={isRegister ? registerBusinessAction : loginAction}
+                onSubmit={(event) => {
+                  if (!isRegister || registerStep === registerSteps.length - 1) {
+                    return;
+                  }
+
+                  event.preventDefault();
+                  goToRegisterStep(registerStep + 1);
+                }}
                 className={formSpacing}
               >
                 {isRegister ? (
-                  <>
-                    <input type="hidden" name="plan" value="premium" />
-                    <input type="hidden" name="slotMinutes" value="10" />
-                    <label className="block text-xs font-bold">
-                      İşletme adı
-                      <input
-                        name="businessName"
-                        type="text"
-                        required
-                        className={fieldBase}
-                        placeholder="İşletme adı"
+                  <div className="space-y-4">
+                    <div>
+                      <div className="flex items-center justify-between text-[11px] font-bold text-neutral-400">
+                        <span>{activeStep?.eyebrow ?? "Kayıt akışı"}</span>
+                        <span>{registerStep + 1} / {registerSteps.length}</span>
+                      </div>
+                      <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-neutral-100 dark:bg-white/10">
+                        <div
+                          className="h-full rounded-full bg-primary transition-all"
+                          style={{
+                            width: `${((registerStep + 1) / registerSteps.length) * 100}%`,
+                          }}
+                        />
+                      </div>
+                      <div className="mt-3 flex items-center justify-between gap-3">
+                        {registerSteps.map((step, index) => {
+                          const isCurrent = index === registerStep;
+                          const isDone = index < registerStep;
+
+                          return (
+                            <button
+                              key={step.title}
+                              type="button"
+                              disabled={index > registerStep + 1}
+                              onClick={() => goToRegisterStep(index)}
+                              className={
+                                isCurrent || isDone
+                                  ? "group flex min-w-0 items-center gap-2 text-left"
+                                  : "group flex min-w-0 items-center gap-2 text-left text-neutral-400"
+                              }
+                            >
+                              <span
+                                className={
+                                  isCurrent
+                                    ? "grid size-6 shrink-0 place-items-center rounded-full bg-primary text-[11px] font-black text-white"
+                                    : isDone
+                                      ? "grid size-6 shrink-0 place-items-center rounded-full bg-primary/10 text-primary"
+                                      : "grid size-6 shrink-0 place-items-center rounded-full bg-neutral-100 text-[11px] font-black text-neutral-400 dark:bg-white/10"
+                                }
+                              >
+                                {isDone ? <Check size={13} /> : index + 1}
+                              </span>
+                              <span className="min-w-0">
+                                <span
+                                  className={
+                                    isCurrent
+                                      ? "block truncate text-xs font-black text-[#111111] dark:text-white"
+                                      : "block truncate text-xs font-semibold"
+                                  }
+                                >
+                                  {step.title}
+                                </span>
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    <div
+                      ref={accountStepRef}
+                      className={registerStep === 0 ? "space-y-3" : "hidden"}
+                    >
+                      <StepIntro
+                        title="Hesap bilgileri"
+                        description="Panel girişini bu bilgilerle yapacaksınız."
                       />
-                    </label>
+
+                      <label className="block text-xs font-bold">
+                        E-posta
+                        <div className="relative">
+                          <input
+                            name="email"
+                            type="email"
+                            required
+                            className={`${fieldBase} pr-11`}
+                            placeholder="eposta@alanadi.com"
+                          />
+                          <Mail
+                            size={18}
+                            className="absolute right-4 top-[calc(50%+4px)] -translate-y-1/2 text-neutral-400"
+                            aria-hidden="true"
+                          />
+                        </div>
+                      </label>
+
+                      <label className="block text-xs font-bold">
+                        Telefon
+                        <div className={phoneShell}>
+                          <span className="grid place-items-center border-r border-neutral-200 bg-neutral-50 px-3 text-sm font-black text-neutral-500 dark:border-white/10 dark:bg-white/10 dark:text-white/70">
+                            +90
+                          </span>
+                          <input
+                            name="phone"
+                            type="tel"
+                            inputMode="numeric"
+                            autoComplete="tel"
+                            required
+                            maxLength={16}
+                            pattern="[1-9][0-9]{9}"
+                            title="Telefon numarası 10 haneli olmalı. Örnek: 5321234567"
+                            onInput={(event) => {
+                              const input = event.currentTarget;
+                              input.value = normalizeVisiblePhone(input.value);
+                            }}
+                            className={phoneInputClass}
+                            placeholder="5321234567"
+                          />
+                          <span className="grid place-items-center px-3 text-neutral-400">
+                            <Phone size={18} aria-hidden="true" />
+                          </span>
+                        </div>
+                      </label>
+
+                      <PasswordField
+                        name="password"
+                        label="Şifre"
+                        minLength={10}
+                        placeholder="••••••••••"
+                        autoComplete="new-password"
+                        className="block text-xs font-bold"
+                        inputClassName="rounded-xl border-neutral-200 bg-white px-4 text-[#111111] shadow-[0_1px_0_rgba(17,17,17,0.03)] dark:border-white/10 dark:bg-white/10 dark:text-white"
+                      />
+                    </div>
+
+                    <div
+                      ref={businessStepRef}
+                      className={registerStep === 1 ? "space-y-3" : "hidden"}
+                    >
+                      <StepIntro
+                        title="İşletme bilgileri"
+                        description="Yetkili, işletme adı ve çalışma saatleri."
+                      />
+
+                      <label className="block text-xs font-bold">
+                        İsim soyisim
+                        <div className="relative">
+                          <input
+                            name="ownerName"
+                            type="text"
+                            required
+                            className={`${fieldBase} pr-11`}
+                            placeholder="Yetkili ad soyad"
+                          />
+                          <UserRound
+                            size={18}
+                            className="absolute right-4 top-[calc(50%+4px)] -translate-y-1/2 text-neutral-400"
+                            aria-hidden="true"
+                          />
+                        </div>
+                      </label>
+
+                      <label className="block text-xs font-bold">
+                        İşletme adı
+                        <div className="relative">
+                          <input
+                            name="businessName"
+                            type="text"
+                            required
+                            className={`${fieldBase} pr-11`}
+                            placeholder="İşletme adı"
+                          />
+                          <Building2
+                            size={18}
+                            className="absolute right-4 top-[calc(50%+4px)] -translate-y-1/2 text-neutral-400"
+                            aria-hidden="true"
+                          />
+                        </div>
+                      </label>
+
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <label className="block text-xs font-bold">
+                          Açılış saati
+                          <div className="relative">
+                            <select
+                              name="opensAt"
+                              required
+                              defaultValue="09:00"
+                              className={`${fieldBase} appearance-none pr-11`}
+                            >
+                              {timeOptions.map((time) => (
+                                <option key={`open-${time}`} value={time}>
+                                  {time}
+                                </option>
+                              ))}
+                            </select>
+                            <Clock3
+                              size={18}
+                              className="absolute right-4 top-[calc(50%+4px)] -translate-y-1/2 text-neutral-400"
+                              aria-hidden="true"
+                            />
+                          </div>
+                        </label>
+
+                        <label className="block text-xs font-bold">
+                          Kapanış saati
+                          <div className="relative">
+                            <select
+                              name="closesAt"
+                              required
+                              defaultValue="18:00"
+                              className={`${fieldBase} appearance-none pr-11`}
+                            >
+                              {timeOptions.map((time) => (
+                                <option key={`close-${time}`} value={time}>
+                                  {time}
+                                </option>
+                              ))}
+                            </select>
+                            <Clock3
+                              size={18}
+                              className="absolute right-4 top-[calc(50%+4px)] -translate-y-1/2 text-neutral-400"
+                              aria-hidden="true"
+                            />
+                          </div>
+                        </label>
+                      </div>
+
+                    </div>
+
+                    <div
+                      ref={paymentStepRef}
+                      className={registerStep === 2 ? "space-y-3" : "hidden"}
+                    >
+                      <StepIntro
+                        title="Paket ve ödeme"
+                        description="Ödeme tamamlanmadan işletme paneli açılmaz."
+                      />
+
+                      <div className="grid gap-2">
+                        {(["standard", "premium"] as const).map((planKey) => {
+                          const plan = plans[planKey];
+                          const isSelected = selectedPlan === planKey;
+
+                          return (
+                            <label
+                              key={planKey}
+                              className={
+                                isSelected
+                                  ? "flex cursor-pointer items-center justify-between gap-3 rounded-xl border border-primary bg-primary/10 p-3"
+                                  : "flex cursor-pointer items-center justify-between gap-3 rounded-xl border border-neutral-200 bg-white p-3 dark:border-white/10 dark:bg-white/5"
+                              }
+                            >
+                              <span>
+                                <span className="block text-sm font-black">
+                                  {plan.name}
+                                </span>
+                                <span className="mt-1 block text-xs text-neutral-500 dark:text-neutral-300">
+                                  {plan.branchLimit} şube ·{" "}
+                                  {plan.staffLimitScope === "branch"
+                                    ? "şube başı "
+                                    : ""}
+                                  {plan.staffLimit} personel
+                                </span>
+                              </span>
+                              <span className="flex items-center gap-3">
+                                <span className="text-sm font-black">
+                                  {formatCurrency(plan.monthlyPriceCents)}
+                                </span>
+                                <input
+                                  name="plan"
+                                  type="radio"
+                                  required
+                                  value={planKey}
+                                  checked={isSelected}
+                                  onChange={() => setSelectedPlan(planKey)}
+                                  className="size-4"
+                                />
+                              </span>
+                            </label>
+                          );
+                        })}
+                      </div>
+
+                      <div className="rounded-xl border border-primary/20 bg-primary/10 p-3">
+                        <div className="flex items-start gap-3">
+                          <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-white text-primary shadow-sm dark:bg-white/10">
+                            <CreditCard size={18} />
+                          </span>
+                          <div>
+                            <p className="text-sm font-black">
+                              {formatCurrency(activePlan.monthlyPriceCents)} / ay
+                            </p>
+                            <p className="mt-1 text-xs leading-5 text-neutral-600 dark:text-neutral-300">
+                              Ödeme tamamlanmadan işletme paneli açılmaz.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <label className="flex items-start gap-2 text-xs leading-5 text-neutral-500 dark:text-neutral-300">
+                        <input
+                          name="paymentConsent"
+                          type="checkbox"
+                          required
+                          className="mt-1 size-4 rounded border-neutral-300"
+                        />
+                        Seçtiğim paket için ödeme adımını tamamlamam gerektiğini
+                        onaylıyorum.
+                      </label>
+
+                      <label className="flex items-start gap-2 text-xs leading-5 text-neutral-500 dark:text-neutral-300">
+                        <input
+                          name="kvkkConsent"
+                          type="checkbox"
+                          required
+                          className="mt-1 size-4 rounded border-neutral-300"
+                        />
+                        Kullanım koşullarını ve KVKK aydınlatma metnini okudum,
+                        işletme kaydı için onaylıyorum.
+                      </label>
+                    </div>
+
+                    <div className="flex gap-2">
+                      {registerStep > 0 ? (
+                        <button
+                          type="button"
+                          onClick={() => goToRegisterStep(registerStep - 1)}
+                          className="inline-flex min-h-11 flex-1 items-center justify-center rounded-xl border border-neutral-200 bg-white px-4 text-sm font-bold shadow-sm transition hover:border-primary dark:border-white/10 dark:bg-white/10"
+                        >
+                          Geri
+                        </button>
+                      ) : null}
+
+                      {registerStep < registerSteps.length - 1 ? (
+                        <button
+                          type="button"
+                          onClick={() => goToRegisterStep(registerStep + 1)}
+                          className="inline-flex min-h-11 flex-[1.4] items-center justify-center gap-2 rounded-xl bg-primary px-5 text-sm font-bold text-white shadow-[0_14px_30px_rgba(0,139,71,0.28)] transition hover:bg-primary/90"
+                        >
+                          Devam et
+                          <ArrowRight size={16} />
+                        </button>
+                      ) : (
+                        <button
+                          type="submit"
+                          className="inline-flex min-h-11 flex-[1.4] items-center justify-center gap-2 rounded-xl bg-primary px-5 text-sm font-bold text-white shadow-[0_14px_30px_rgba(0,139,71,0.28)] transition hover:bg-primary/90"
+                        >
+                          Ödemeye geç
+                          <ArrowRight size={16} />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <>
                     <label className="block text-xs font-bold">
-                      Yetkili ad soyad
+                      E-posta
                       <div className="relative">
                         <input
-                          name="ownerName"
-                          type="text"
+                          name="email"
+                          type="email"
                           required
                           className={`${fieldBase} pr-11`}
-                          placeholder="Yetkili ad soyad"
+                          placeholder="eposta@alanadi.com"
                         />
-                        <UserRound
+                        <Mail
                           size={18}
                           className="absolute right-4 top-[calc(50%+4px)] -translate-y-1/2 text-neutral-400"
                           aria-hidden="true"
                         />
                       </div>
                     </label>
-                  </>
-                ) : null}
 
-                <label className="block text-xs font-bold">
-                  E-posta
-                  <div className="relative">
-                    <input
-                      name="email"
-                      type="email"
-                      required
-                      className={`${fieldBase} pr-11`}
-                      placeholder="eposta@alanadi.com"
+                    <PasswordField
+                      name="password"
+                      label="Şifre"
+                      minLength={8}
+                      placeholder="••••••••••"
+                      autoComplete="current-password"
+                      className="block text-xs font-bold"
+                      inputClassName="rounded-xl border-neutral-200 bg-white px-4 text-[#111111] shadow-[0_1px_0_rgba(17,17,17,0.03)] dark:border-white/10 dark:bg-white/10 dark:text-white"
                     />
-                    <Mail
-                      size={18}
-                      className="absolute right-4 top-[calc(50%+4px)] -translate-y-1/2 text-neutral-400"
-                      aria-hidden="true"
-                    />
-                  </div>
-                </label>
 
-                {isRegister ? (
-                  <label className="block text-xs font-bold">
-                    Telefon
-                    <div className={phoneShell}>
-                      <span className="grid place-items-center border-r border-neutral-200 bg-neutral-50 px-3 text-sm font-black text-neutral-500 dark:border-white/10 dark:bg-white/10 dark:text-white/70">
-                        +90
-                      </span>
-                      <input
-                        name="phone"
-                        type="tel"
-                        inputMode="numeric"
-                        autoComplete="tel"
-                        required
-                        maxLength={16}
-                        pattern="[1-9][0-9]{9}"
-                        title="Telefon numarası 10 haneli olmalı. Örnek: 5321234567"
-                        onInput={(event) => {
-                          const input = event.currentTarget;
-                          input.value = normalizeVisiblePhone(input.value);
-                        }}
-                        className={phoneInputClass}
-                        placeholder="5321234567"
-                      />
-                      <span className="grid place-items-center px-3 text-neutral-400">
-                        <Phone size={18} aria-hidden="true" />
-                      </span>
+                    <div className="flex items-center justify-between gap-4 text-xs text-neutral-500 dark:text-neutral-300">
+                      <label className="flex items-center gap-2">
+                        <span className="grid size-4 place-items-center rounded-sm border border-neutral-300 bg-white dark:border-white/20 dark:bg-white/10" />
+                        Beni hatırla
+                      </label>
+                      <Link href="/login" className="font-semibold text-primary">
+                        Şifremi unuttum
+                      </Link>
                     </div>
-                  </label>
-                ) : null}
 
-                <PasswordField
-                  name="password"
-                  label="Şifre"
-                  minLength={isRegister ? 10 : 8}
-                  placeholder="••••••••••"
-                  autoComplete={isRegister ? "new-password" : "current-password"}
-                  className="block text-xs font-bold"
-                  inputClassName="rounded-xl border-neutral-200 bg-white px-4 text-[#111111] shadow-[0_1px_0_rgba(17,17,17,0.03)] dark:border-white/10 dark:bg-white/10 dark:text-white"
-                />
-
-                {!isRegister ? (
-                  <div className="flex items-center justify-between gap-4 text-xs text-neutral-500 dark:text-neutral-300">
-                    <label className="flex items-center gap-2">
-                      <span className="grid size-4 place-items-center rounded-sm border border-neutral-300 bg-white dark:border-white/20 dark:bg-white/10" />
-                      Beni hatırla
-                    </label>
-                    <Link href="/login" className="font-semibold text-primary">
-                      Şifremi unuttum
-                    </Link>
-                  </div>
-                ) : null}
-
-                {isRegister ? (
-                  <label className="flex items-start gap-2 text-xs leading-5 text-neutral-500 dark:text-neutral-300">
-                    <input
-                      name="kvkkConsent"
-                      type="checkbox"
-                      required
-                      className="mt-1 size-4 rounded border-neutral-300"
-                    />
-                    Kullanım koşullarını ve KVKK aydınlatma metnini okudum,
-                    işletme kaydı için onaylıyorum.
-                  </label>
-                ) : null}
-
-                {isRegister ? (
-                  <ConfirmSubmitButton
-                    className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-primary px-5 text-sm font-bold text-white shadow-[0_14px_30px_rgba(0,139,71,0.28)] transition hover:bg-primary/90"
-                    title="İşletme kaydı oluşturulsun mu?"
-                    description="İşletme, merkez şube, yetkili hesabı ve paket modülleri oluşturulacak. Kaydı tamamlayınca panele yönlendirileceksiniz."
-                  >
-                    İşletmeyi oluştur
-                  </ConfirmSubmitButton>
-                ) : (
-                  <button
-                    type="submit"
-                    className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-primary px-5 text-sm font-bold text-white shadow-[0_14px_30px_rgba(0,139,71,0.28)] transition hover:bg-primary/90"
-                  >
-                    Giriş yap
-                    <ArrowRight size={16} />
-                  </button>
+                    <button
+                      type="submit"
+                      className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-primary px-5 text-sm font-bold text-white shadow-[0_14px_30px_rgba(0,139,71,0.28)] transition hover:bg-primary/90"
+                    >
+                      Giriş yap
+                      <ArrowRight size={16} />
+                    </button>
+                  </>
                 )}
               </form>
 
-              <div
-                className={`${dividerSpacing} flex items-center gap-4 text-xs text-neutral-400`}
-              >
-                <span className="h-px flex-1 bg-neutral-200 dark:bg-white/10" />
-                {isRegister ? "veya hızlı başla" : "veya giriş yap"}
-                <span className="h-px flex-1 bg-neutral-200 dark:bg-white/10" />
-              </div>
+              {!isRegister ? (
+                <>
+                  <div
+                    className={`${dividerSpacing} flex items-center gap-4 text-xs text-neutral-400`}
+                  >
+                    <span className="h-px flex-1 bg-neutral-200 dark:bg-white/10" />
+                    veya giriş yap
+                    <span className="h-px flex-1 bg-neutral-200 dark:bg-white/10" />
+                  </div>
 
-              <div className="grid gap-3 sm:grid-cols-2">
-                <button
-                  type="button"
-                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-neutral-200 bg-white px-4 text-sm font-semibold shadow-sm transition hover:border-primary dark:border-white/10 dark:bg-white/10"
-                >
-                  <span className="font-black text-primary">G</span>
-                  Google
-                </button>
-                <button
-                  type="button"
-                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-neutral-200 bg-white px-4 text-sm font-semibold shadow-sm transition hover:border-primary dark:border-white/10 dark:bg-white/10"
-                >
-                  <Apple size={17} />
-                  Apple
-                </button>
-              </div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <button
+                      type="button"
+                      className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-neutral-200 bg-white px-4 text-sm font-semibold shadow-sm transition hover:border-primary dark:border-white/10 dark:bg-white/10"
+                    >
+                      <span className="font-black text-primary">G</span>
+                      Google
+                    </button>
+                    <button
+                      type="button"
+                      className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-neutral-200 bg-white px-4 text-sm font-semibold shadow-sm transition hover:border-primary dark:border-white/10 dark:bg-white/10"
+                    >
+                      <Apple size={17} />
+                      Apple
+                    </button>
+                  </div>
+                </>
+              ) : null}
 
               <p className="mt-3 text-center text-sm text-neutral-500 dark:text-neutral-300">
                 {isRegister ? "Zaten hesabınız var mı?" : "Hesabınız yok mu?"}{" "}
@@ -277,6 +629,23 @@ export function AuthPanel({ mode }: { mode: AuthMode }) {
         </div>
       </section>
     </main>
+  );
+}
+
+function StepIntro({
+  title,
+  description,
+}: {
+  title: string;
+  description: string;
+}) {
+  return (
+    <div className="border-b border-neutral-200 pb-3 dark:border-white/10">
+      <p className="text-base font-black">{title}</p>
+      <p className="mt-1 text-xs leading-5 text-neutral-500 dark:text-neutral-300">
+        {description}
+      </p>
+    </div>
   );
 }
 

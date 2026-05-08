@@ -3,6 +3,13 @@ import { CalendarDays, ChevronLeft, ChevronRight, Filter, Search } from "lucide-
 import { TimelineGrid, type TimelineEvent } from "@/components/timeline-grid";
 import type { Appointment } from "@/lib/app-data";
 
+function formatDateKey(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 function weekDays() {
   const now = new Date();
   const monday = new Date(now);
@@ -13,7 +20,7 @@ function weekDays() {
     const date = new Date(monday);
     date.setDate(monday.getDate() + index);
     return {
-      id: date.toISOString().slice(0, 10),
+      id: formatDateKey(date),
       label: date.toLocaleDateString("tr-TR", { weekday: "short" }),
       subLabel: date.toLocaleDateString("tr-TR", {
         day: "2-digit",
@@ -109,6 +116,8 @@ export function CalendarBoard({
         endsAt={closesAt}
         emptyText="Bu hafta randevu kaydı bulunmuyor."
         rowHeight={176}
+        showCurrentTime
+        slotHref={(dateKey, time) => `/app/calendar/new?startsAt=${dateKey}T${time}`}
       />
     </section>
   );

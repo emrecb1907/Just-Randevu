@@ -68,6 +68,96 @@ function splitName(fullName: string) {
   return { firstName, lastName };
 }
 
+function dateKeyFromDate(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function timeFromDate(date: Date) {
+  return `${String(date.getHours()).padStart(2, "0")}:${String(
+    date.getMinutes(),
+  ).padStart(2, "0")}`;
+}
+
+function minutesFromTime(value: string) {
+  const [hourValue, minuteValue] = value.split(":").map(Number);
+  return (hourValue ?? 0) * 60 + (minuteValue ?? 0);
+}
+
+async function assertAppointmentAvailability({
+  membership,
+  startsAt,
+  staffId,
+  serviceId,
+  ignoredAppointmentId,
+}: {
+  membership: Awaited<ReturnType<typeof requireTenantContext>>["membership"];
+  startsAt: string;
+  staffId: string;
+  serviceId: string;
+  ignoredAppointmentId?: string;
+}) {
+  const dataset = await getTenantDataset(membership);
+  const service = dataset.services.find((item) => item.id === serviceId);
+  const startDate = new Date(startsAt);
+
+  if (!service || Number.isNaN(startDate.getTime())) {
+    redirect(
+      `/app/calendar?error=${encodeURIComponent("Randevu bilgileri geçerli değil.")}`,
+    );
+  }
+
+  if (startDate.getMinutes() % 5 !== 0) {
+    redirect(
+      `/app/calendar?error=${encodeURIComponent("Randevu dakikası 5 dakikalık aralıklarla seçilmeli.")}`,
+    );
+  }
+
+  const selectedDateKey = dateKeyFromDate(startDate);
+  const selectedTime = timeFromDate(startDate);
+  const selectedStart = minutesFromTime(selectedTime);
+  const selectedEnd = selectedStart + service.duration;
+  const dayHours = dataset.businessHours.find(
+    (item) => item.weekday === startDate.getDay(),
+  );
+  const opensAt = dayHours?.opensAt ?? dataset.business.opensAt;
+  const closesAt = dayHours?.closesAt ?? dataset.business.closesAt;
+
+  if (
+    dayHours?.isClosed ||
+    selectedStart < minutesFromTime(opensAt) ||
+    selectedEnd > minutesFromTime(closesAt)
+  ) {
+    redirect(
+      `/app/calendar?error=${encodeURIComponent("Randevu işletme çalışma saatleri içinde olmalı.")}`,
+    );
+  }
+
+  const hasOverlap = dataset.appointments.some((appointment) => {
+    if (
+      appointment.id === ignoredAppointmentId ||
+      appointment.staffId !== staffId ||
+      appointment.dateKey !== selectedDateKey ||
+      appointment.status === "iptal" ||
+      appointment.status === "gelmedi"
+    ) {
+      return false;
+    }
+
+    const appointmentStart = minutesFromTime(appointment.start);
+    const appointmentEnd = appointmentStart + appointment.durationMinutes;
+    return selectedStart < appointmentEnd && selectedEnd > appointmentStart;
+  });
+
+  if (hasOverlap) {
+    redirect(
+      `/app/calendar?error=${encodeURIComponent("Bu personelde seçilen saat dolu.")}`,
+    );
+  }
+}
+
 export async function loginAction(formData: FormData) {
   const input = loginSchema.parse(formObject(formData));
   const supabase = await createServerSupabaseClient();
@@ -87,6 +177,12 @@ export async function logoutAction() {
 }
 
 export async function registerBusinessAction(formData: FormData) {
+  if (formString(formData, "paymentConsent") !== "on") {
+    redirect(
+      `/register?error=${encodeURIComponent("Ödeme adımı tamamlanmadan kayıt oluşturulamaz.")}`,
+    );
+  }
+
   const input = businessRegistrationSchema.parse(formObject(formData));
   const admin = createSupabaseAdminClient();
   const { firstName, lastName } = splitName(input.ownerName);
@@ -134,7 +230,6 @@ export async function registerBusinessAction(formData: FormData) {
       business_email: input.email,
       business_phone: input.phone,
       selected_plan: input.plan,
-      selected_slot_minutes: input.slotMinutes,
       business_opens_at: input.opensAt,
       business_closes_at: input.closesAt,
     },
@@ -204,7 +299,6 @@ export async function superAdminCreateBusinessAction(formData: FormData) {
       business_email: input.email,
       business_phone: input.phone,
       selected_plan: input.plan,
-      selected_slot_minutes: input.slotMinutes,
       business_opens_at: input.opensAt,
       business_closes_at: input.closesAt,
     },
@@ -229,7 +323,6 @@ export async function superAdminUpdateBusinessAction(formData: FormData) {
     business_email: input.email || null,
     business_phone: input.phone || null,
     selected_plan: input.plan,
-    selected_slot_minutes: input.slotMinutes,
     business_opens_at: input.opensAt,
     business_closes_at: input.closesAt,
     target_is_active: input.isActive,
@@ -780,6 +873,12 @@ export async function createAppointmentAction(formData: FormData) {
   const { user, membership } = await requireTenantContext();
   assertBusinessScope(formData, membership.businessId);
   const input = appointmentFormSchema.parse(formObject(formData));
+  await assertAppointmentAvailability({
+    membership,
+    startsAt: input.startsAt,
+    staffId: input.staffId,
+    serviceId: input.serviceId,
+  });
   const admin = createSupabaseAdminClient();
   const { error } = await admin.rpc("rpc_create_appointment", {
     target_business_id: membership.businessId,
@@ -807,6 +906,13 @@ export async function updateAppointmentAction(formData: FormData) {
   const { user, membership } = await requireTenantContext();
   assertBusinessScope(formData, membership.businessId);
   const input = appointmentUpdateSchema.parse(formObject(formData));
+  await assertAppointmentAvailability({
+    membership,
+    startsAt: input.startsAt,
+    staffId: input.staffId,
+    serviceId: input.serviceId,
+    ignoredAppointmentId: input.appointmentId,
+  });
   const admin = createSupabaseAdminClient();
   const { error } = await admin.rpc("rpc_update_appointment", {
     target_business_id: membership.businessId,
@@ -861,7 +967,6 @@ export async function updateBusinessSettingsAction(formData: FormData) {
   const { error } = await admin.rpc("rpc_update_business_settings", {
     target_business_id: membership.businessId,
     business_name: input.name,
-    selected_slot_minutes: input.slotMinutes,
     business_opens_at: input.opensAt,
     business_closes_at: input.closesAt,
   });

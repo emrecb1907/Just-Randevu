@@ -1,10 +1,10 @@
 drop function if exists public.rpc_update_business_settings(uuid, text, integer) cascade;
 drop function if exists public.rpc_update_business_settings(uuid, text, integer, time, time) cascade;
+drop function if exists public.rpc_update_business_settings(uuid, text, time, time) cascade;
 
 create or replace function public.rpc_update_business_settings(
   target_business_id uuid,
   business_name text,
-  selected_slot_minutes integer default 15,
   business_opens_at time default '09:00',
   business_closes_at time default '18:00'
 )
@@ -16,7 +16,6 @@ as $$
 begin
   update public.businesses
   set name = business_name,
-      slot_minutes = selected_slot_minutes,
       updated_at = now()
   where id = target_business_id;
 

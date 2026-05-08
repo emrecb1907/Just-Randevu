@@ -19,7 +19,10 @@ set search_path = public, app_private
 as $$
 declare
   service_row public.services%rowtype;
+  day_hours public.business_hours%rowtype;
   old_status public.appointment_status;
+  appointment_start_local timestamp;
+  appointment_end_local timestamp;
 begin
   select status
   into old_status
@@ -40,6 +43,27 @@ begin
 
   if service_row.id is null then
     raise exception 'Hizmet kaydı bulunamadı.';
+  end if;
+
+  if mod(extract(minute from appointment_starts_at at time zone 'Europe/Istanbul')::integer, 5) <> 0 then
+    raise exception 'Randevu dakikası 5 dakikalık aralıklarla seçilmeli.';
+  end if;
+
+  appointment_start_local := appointment_starts_at at time zone 'Europe/Istanbul';
+  appointment_end_local := (appointment_starts_at + make_interval(mins => service_row.duration_minutes)) at time zone 'Europe/Istanbul';
+
+  select *
+  into day_hours
+  from public.business_hours
+  where business_id = target_business_id
+    and weekday = extract(dow from appointment_start_local)::integer;
+
+  if day_hours.id is null
+    or day_hours.is_closed = true
+    or appointment_end_local::date <> appointment_start_local::date
+    or appointment_start_local::time < day_hours.opens_at
+    or appointment_end_local::time > day_hours.closes_at then
+    raise exception 'Randevu işletme çalışma saatleri içinde olmalı.';
   end if;
 
   update public.appointments

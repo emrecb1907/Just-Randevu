@@ -95,18 +95,6 @@ export const businessRegistrationSchema = z.object({
   phone: turkishPhoneSchema,
   password: z.string().min(10).max(72),
   plan: z.enum(["standard", "premium"]),
-  slotMinutes: z.coerce
-    .number()
-    .default(15)
-    .pipe(
-      z.union([
-        z.literal(5),
-        z.literal(10),
-        z.literal(15),
-        z.literal(20),
-        z.literal(30),
-      ]),
-    ),
   opensAt: z.string().regex(/^\d{2}:\d{2}$/).default("09:00"),
   closesAt: z.string().regex(/^\d{2}:\d{2}$/).default("18:00"),
   kvkkConsent: requiredKvkkConsentSchema,
@@ -299,18 +287,6 @@ export const loginSchema = z.object({
 export const businessSettingsSchema = z.object({
   businessId: z.string().uuid(),
   name: z.string().min(2).max(120),
-  slotMinutes: z.coerce
-    .number()
-    .default(15)
-    .pipe(
-      z.union([
-        z.literal(5),
-        z.literal(10),
-        z.literal(15),
-        z.literal(20),
-        z.literal(30),
-      ]),
-    ),
   opensAt: z.string().regex(/^\d{2}:\d{2}$/),
   closesAt: z.string().regex(/^\d{2}:\d{2}$/),
 });
@@ -321,18 +297,6 @@ export const systemBusinessUpdateSchema = z.object({
   email: z.string().email().optional().or(z.literal("")),
   phone: turkishPhoneSchema.optional().or(z.literal("")),
   plan: z.enum(["standard", "premium"]),
-  slotMinutes: z.coerce
-    .number()
-    .default(15)
-    .pipe(
-      z.union([
-        z.literal(5),
-        z.literal(10),
-        z.literal(15),
-        z.literal(20),
-        z.literal(30),
-      ]),
-    ),
   opensAt: z.string().regex(/^\d{2}:\d{2}$/),
   closesAt: z.string().regex(/^\d{2}:\d{2}$/),
   isActive: z.preprocess(

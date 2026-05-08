@@ -67,30 +67,34 @@ export default async function AppPage() {
         </div>
 
         <section className="overflow-hidden rounded-[24px] border border-border bg-surface shadow-panel">
-          <div className="grid grid-cols-[1.3fr_0.8fr_0.8fr_0.8fr] border-b border-border bg-muted/50 p-3 text-xs font-semibold text-muted-foreground">
-            <span>İşletme</span>
-            <span>Plan</span>
-            <span>Abonelik</span>
-            <span>Kullanım</span>
-          </div>
-          {system.businesses.map((business) => (
-            <article
-              key={business.id}
-              className="grid grid-cols-[1.3fr_0.8fr_0.8fr_0.8fr] gap-3 border-b border-border p-3 text-sm last:border-b-0"
-            >
-              <span className="font-semibold">{business.name}</span>
-              <span>{business.plan === "premium" ? "Premium" : "Standart"}</span>
-              <span>{business.subscriptionStatus}</span>
-              <span>
-                {business.branchCount} şube · {business.memberCount} kullanıcı
-              </span>
-            </article>
-          ))}
-          {system.businesses.length === 0 ? (
-            <div className="p-4 text-sm text-muted-foreground">
-              Henüz işletme kaydı yok.
+          <div className="overflow-x-auto">
+            <div className="min-w-[640px]">
+              <div className="grid grid-cols-[1.3fr_0.8fr_0.8fr_0.8fr] border-b border-border bg-muted/50 p-3 text-xs font-semibold text-muted-foreground">
+                <span>İşletme</span>
+                <span>Plan</span>
+                <span>Abonelik</span>
+                <span>Kullanım</span>
+              </div>
+              {system.businesses.map((business) => (
+                <article
+                  key={business.id}
+                  className="grid grid-cols-[1.3fr_0.8fr_0.8fr_0.8fr] gap-3 border-b border-border p-3 text-sm last:border-b-0"
+                >
+                  <span className="font-semibold">{business.name}</span>
+                  <span>{business.plan === "premium" ? "Premium" : "Standart"}</span>
+                  <span>{business.subscriptionStatus}</span>
+                  <span>
+                    {business.branchCount} şube · {business.memberCount} kullanıcı
+                  </span>
+                </article>
+              ))}
+              {system.businesses.length === 0 ? (
+                <div className="p-4 text-sm text-muted-foreground">
+                  Henüz işletme kaydı yok.
+                </div>
+              ) : null}
             </div>
-          ) : null}
+          </div>
         </section>
       </div>
     );

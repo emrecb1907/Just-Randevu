@@ -3,7 +3,7 @@ import "server-only";
 import { redirect } from "next/navigation";
 
 import type { ModuleKey, PlanKey, RoleKey } from "@/lib/product-model";
-import { modules } from "@/lib/product-model";
+import { modules, plans } from "@/lib/product-model";
 import {
   createServerSupabaseClient,
   createSupabaseAdminClient,
@@ -147,7 +147,6 @@ export type TenantBusiness = {
   branchLimit: number;
   staffLimitPerBranch: number;
   staffLimitScope: "business" | "branch";
-  slotMinutes: number;
   opensAt: string;
   closesAt: string;
   activeModules: ModuleKey[];
@@ -206,7 +205,6 @@ export type SystemBusiness = {
   email: string;
   phone: string;
   plan: PlanKey;
-  slotMinutes: number;
   opensAt: string;
   closesAt: string;
   isActive: boolean;
@@ -357,7 +355,10 @@ function planLimits(plan: PlanKey) {
 }
 
 function formatDateKey(date: Date) {
-  return date.toISOString().slice(0, 10);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 function sameMonth(value: string, monthDate: Date) {
@@ -390,7 +391,6 @@ function emptyDataset(businessId: string, businessName: string): AppDataset {
       subscriptionPriceCents: 0,
       subscriptionStatus: "pending",
       ...limits,
-      slotMinutes: 15,
       opensAt: "09:00",
       closesAt: "18:00",
       activeModules: [],
@@ -532,6 +532,7 @@ export async function getTenantDataset(
     const planRow = asRecord(root.plan);
     const subscriptionRow = asRecord(root.subscription);
     const plan = asPlanKey(businessRow.plan_key);
+    const catalogPlan = plans[plan];
     const fallbackLimits = planLimits(plan);
     const limits = {
       branchLimit: asNumber(planRow.branch_limit, fallbackLimits.branchLimit),
@@ -727,12 +728,14 @@ export async function getTenantDataset(
         id: asString(businessRow.id, membership.businessId),
         name: asString(businessRow.name, membership.businessName),
         plan,
-        planName: asString(planRow.name, plan === "premium" ? "Premium" : "Standart"),
-        planMonthlyPriceCents: asNumber(planRow.monthly_price_cents),
+        planName: asString(planRow.name, catalogPlan.name),
+        planMonthlyPriceCents: asNumber(
+          planRow.monthly_price_cents,
+          catalogPlan.monthlyPriceCents,
+        ),
         subscriptionPriceCents: asNumber(subscriptionRow.price_snapshot_cents),
         subscriptionStatus: asString(subscriptionRow.status, "pending"),
         ...limits,
-        slotMinutes: asNumber(businessRow.slot_minutes, 15),
         opensAt: firstOpenDay?.opensAt ?? "09:00",
         closesAt: firstOpenDay?.closesAt ?? "18:00",
         activeModules,
@@ -806,7 +809,6 @@ export async function getSystemDataset(): Promise<SystemDataset> {
     email: asString(business.email),
     phone: asString(business.phone),
     plan: asPlanKey(business.plan_key),
-    slotMinutes: asNumber(business.slot_minutes, 15),
     opensAt: asString(business.opens_at, "09:00").slice(0, 5),
     closesAt: asString(business.closes_at, "18:00").slice(0, 5),
     isActive: asBoolean(business.is_active),

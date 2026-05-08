@@ -1,5 +1,6 @@
 drop function if exists public.rpc_create_business_with_owner(uuid, text, text, text, public.plan_key, integer) cascade;
 drop function if exists public.rpc_create_business_with_owner(uuid, text, text, text, public.plan_key, integer, time, time) cascade;
+drop function if exists public.rpc_create_business_with_owner(uuid, text, text, text, public.plan_key, time, time) cascade;
 
 create or replace function public.rpc_create_business_with_owner(
   owner_profile_id uuid,
@@ -7,7 +8,6 @@ create or replace function public.rpc_create_business_with_owner(
   business_email text,
   business_phone text,
   selected_plan public.plan_key,
-  selected_slot_minutes integer default 15,
   business_opens_at time default '09:00',
   business_closes_at time default '18:00'
 )
@@ -20,8 +20,8 @@ declare
   created_business_id uuid;
   created_branch_id uuid;
 begin
-  insert into public.businesses (name, email, phone, plan_key, slot_minutes, created_by)
-  values (business_name, business_email, business_phone, selected_plan, selected_slot_minutes, owner_profile_id)
+  insert into public.businesses (name, email, phone, plan_key, created_by)
+  values (business_name, business_email, business_phone, selected_plan, owner_profile_id)
   returning id into created_business_id;
 
   insert into public.branches (business_id, name, phone)

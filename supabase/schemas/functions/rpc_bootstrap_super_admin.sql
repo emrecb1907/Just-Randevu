@@ -39,7 +39,6 @@ begin
       legal_name,
       email,
       plan_key,
-      slot_minutes,
       is_active,
       created_by
     )
@@ -48,7 +47,6 @@ begin
       'Sistem Yönetimi',
       super_email,
       'premium',
-      15,
       true,
       super_profile_id
     )
@@ -58,7 +56,6 @@ begin
     set legal_name = 'Sistem Yönetimi',
         email = super_email,
         plan_key = 'premium',
-        slot_minutes = 15,
         is_active = true,
         created_by = super_profile_id,
         updated_at = now()

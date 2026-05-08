@@ -17,7 +17,6 @@ begin
           'email', b.email,
           'phone', b.phone,
           'plan_key', b.plan_key,
-          'slot_minutes', b.slot_minutes,
           'opens_at', coalesce((
             select bh.opens_at
             from public.business_hours bh

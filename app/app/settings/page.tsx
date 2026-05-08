@@ -3,27 +3,15 @@ import {
   updateBusinessSettingsAction,
 } from "@/app/actions";
 import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
-import { ModuleCard } from "@/components/module-card";
 import { SurfaceCard } from "@/components/surface-card";
 import { getTenantDataset, requireTenantContext } from "@/lib/app-data";
 import { modules, plans } from "@/lib/product-model";
 import type { ModuleKey } from "@/lib/product-model";
-import { formatCurrency } from "@/lib/utils";
+import { cn, formatCurrency } from "@/lib/utils";
 
-type SettingsPageProps = {
-  searchParams?: Promise<Record<string, string | string[] | undefined>>;
-};
-
-function firstParam(value: string | string[] | undefined) {
-  return Array.isArray(value) ? value[0] : value;
-}
-
-export default async function SettingsPage({ searchParams }: SettingsPageProps) {
+export default async function SettingsPage() {
   const { membership } = await requireTenantContext();
   const { business, activeModules } = await getTenantDataset(membership);
-  const params = searchParams ? await searchParams : {};
-  const error = firstParam(params.error);
-  const success = firstParam(params.success);
   const includedModules: ModuleKey[] = plans[business.plan].includedModules;
 
   return (
@@ -37,16 +25,6 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
           İşletme bilgilerini, çalışma saatlerini ve paket kapsamını yönetin.
         </p>
       </div>
-      {error ? (
-        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-800">
-          {error}
-        </div>
-      ) : null}
-      {success ? (
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-800">
-          {success}
-        </div>
-      ) : null}
       <div className="grid gap-4 xl:grid-cols-[1fr_0.72fr]">
         <form
           action={updateBusinessSettingsAction}
@@ -62,24 +40,6 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
               className="mt-2 min-h-11 w-full rounded-xl border border-border bg-background px-3"
               defaultValue={business.name}
             />
-          </label>
-          <label className="text-sm font-medium">
-            Takvim aralığı
-            <select
-              name="slotMinutes"
-              required
-              defaultValue={business.slotMinutes}
-              className="mt-2 min-h-11 w-full rounded-xl border border-border bg-background px-3"
-            >
-              {[5, 10, 15, 20, 30].map((slot) => (
-                <option key={slot} value={slot}>
-                  {slot} dakika
-                </option>
-              ))}
-            </select>
-            <span className="mt-1 block text-xs text-muted-foreground">
-              Randevu başlangıç seçimleri bu aralığa göre ilerler.
-            </span>
           </label>
           <label className="text-sm font-medium">
             Açılış saati
@@ -153,16 +113,63 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
           </dl>
         </SurfaceCard>
       </div>
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {modules.map((module) => {
-          const isActive = activeModules.includes(module.key);
-          const isIncluded = includedModules.includes(module.key);
+      <section className="overflow-hidden rounded-[24px] border border-border bg-surface shadow-panel">
+        <div className="border-b border-border p-4 sm:p-5">
+          <p className="text-sm font-semibold text-primary">Modüller</p>
+          <h2 className="mt-1 text-xl font-semibold">Açık Özellikler</h2>
+          <p className="mt-2 text-sm leading-6 text-muted-foreground">
+            İşletmenin kullanacağı özellikleri tek listeden yönetin.
+          </p>
+        </div>
+        <div className="divide-y divide-border">
+          {modules.map((module) => {
+            const Icon = module.icon;
+            const isActive = activeModules.includes(module.key);
+            const isIncluded = includedModules.includes(module.key);
+            const canToggle = isIncluded || isActive;
 
-          return (
-            <div key={module.key} className="space-y-3">
-              <ModuleCard module={module} activeModules={activeModules} />
-              {isIncluded || isActive ? (
-                <form action={toggleModuleAction}>
+            return (
+              <div
+                key={module.key}
+                className="grid gap-3 p-4 sm:grid-cols-[1fr_auto] sm:items-center sm:p-5"
+              >
+                <div className="flex min-w-0 items-start gap-3">
+                  <div
+                    className={cn(
+                      "grid size-10 shrink-0 place-items-center rounded-xl",
+                      isActive
+                        ? "bg-primary/10 text-primary"
+                        : "bg-muted text-muted-foreground",
+                    )}
+                  >
+                    <Icon size={18} />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="font-semibold">{module.name}</h3>
+                      <span
+                        className={cn(
+                          "rounded-full px-2 py-1 text-[11px] font-bold",
+                          isActive
+                            ? "bg-primary/10 text-primary"
+                            : "bg-muted text-muted-foreground",
+                        )}
+                      >
+                        {isActive ? "Açık" : "Kapalı"}
+                      </span>
+                      {!isIncluded ? (
+                        <span className="rounded-full bg-amber-50 px-2 py-1 text-[11px] font-bold text-amber-800">
+                          Pakette yok
+                        </span>
+                      ) : null}
+                    </div>
+                    <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                      {module.description}
+                    </p>
+                  </div>
+                </div>
+
+                <form action={toggleModuleAction} className="justify-self-start sm:justify-self-end">
                   <input type="hidden" name="businessId" value={business.id} />
                   <input type="hidden" name="moduleKey" value={module.key} />
                   <input
@@ -170,23 +177,31 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
                     name="enabled"
                     value={isActive ? "false" : "true"}
                   />
-                  <ConfirmSubmitButton
-                    title={`${module.name} ${isActive ? "kapatılsın" : "açılsın"} mı?`}
-                    description="Modül kapatıldığında veri silinmez; menü ve işlem akışlarından gizlenir."
-                    className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-xl border border-border bg-background px-3 text-sm font-semibold"
+                  <button
+                    type="submit"
+                    disabled={!canToggle}
+                    aria-label={`${module.name} ${isActive ? "kapat" : "aç"}`}
+                    aria-pressed={isActive}
+                    className={cn(
+                      "relative h-8 w-14 rounded-full border transition disabled:cursor-not-allowed disabled:opacity-50",
+                      isActive
+                        ? "border-primary bg-primary"
+                        : "border-border bg-muted",
+                    )}
                   >
-                    {isActive ? "Modülü kapat" : "Modülü aç"}
-                  </ConfirmSubmitButton>
+                    <span
+                      className={cn(
+                        "absolute top-1 grid size-6 place-items-center rounded-full bg-white shadow-sm transition-transform",
+                        isActive ? "translate-x-7" : "translate-x-1",
+                      )}
+                    />
+                  </button>
                 </form>
-              ) : (
-                <div className="inline-flex min-h-10 w-full items-center justify-center rounded-xl border border-border bg-muted px-3 text-sm font-semibold text-muted-foreground">
-                  Pakete dahil değil
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
+              </div>
+            );
+          })}
+        </div>
+      </section>
     </div>
   );
 }

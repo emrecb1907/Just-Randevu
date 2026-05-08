@@ -45,29 +45,33 @@ export default async function CalendarPage() {
         </div>
       ) : null}
       <section className="overflow-hidden rounded-[22px] border border-border bg-surface shadow-panel">
-        <div className="grid grid-cols-[1fr_1fr_52px] border-b border-border bg-muted/50 p-3 text-xs font-semibold text-muted-foreground md:grid-cols-[0.9fr_1fr_1fr_1fr_52px]">
-          <span>Zaman</span>
-          <span>Müşteri</span>
-          <span className="hidden md:block">Personel</span>
-          <span className="hidden md:block">Hizmet</span>
-          <span />
-        </div>
-        {appointments.map((appointment) => (
-          <article key={appointment.id} className="grid grid-cols-[1fr_1fr_52px] gap-3 border-b border-border p-3 text-sm last:border-b-0 md:grid-cols-[0.9fr_1fr_1fr_1fr_52px]">
-            <span className="font-semibold">{appointment.day} {appointment.start}</span>
-            <span>{appointment.customer}</span>
-            <span className="hidden md:block">{appointment.staffName}</span>
-            <span className="hidden md:block">{appointment.service}</span>
-            <Link href={`/app/calendar/${appointment.id}/edit`} className="grid size-10 place-items-center rounded-xl border border-border bg-background text-muted-foreground hover:text-foreground" aria-label="Randevu düzenle">
-              <Pencil size={16} />
-            </Link>
-          </article>
-        ))}
-        {appointments.length === 0 ? (
-          <div className="p-4 text-sm text-muted-foreground">
-            Henüz randevu kaydı yok.
+        <div className="overflow-x-auto">
+          <div className="min-w-[620px]">
+            <div className="grid grid-cols-[0.9fr_1fr_1fr_1fr_52px] border-b border-border bg-muted/50 p-3 text-xs font-semibold text-muted-foreground">
+              <span>Zaman</span>
+              <span>Müşteri</span>
+              <span>Personel</span>
+              <span>Hizmet</span>
+              <span />
+            </div>
+            {appointments.map((appointment) => (
+              <article key={appointment.id} className="grid grid-cols-[0.9fr_1fr_1fr_1fr_52px] gap-3 border-b border-border p-3 text-sm last:border-b-0">
+                <span className="font-semibold">{appointment.day} {appointment.start}</span>
+                <span>{appointment.customer}</span>
+                <span>{appointment.staffName}</span>
+                <span>{appointment.service}</span>
+                <Link href={`/app/calendar/${appointment.id}/edit`} className="grid size-10 place-items-center rounded-xl border border-border bg-background text-muted-foreground hover:text-foreground" aria-label="Randevu düzenle">
+                  <Pencil size={16} />
+                </Link>
+              </article>
+            ))}
+            {appointments.length === 0 ? (
+              <div className="p-4 text-sm text-muted-foreground">
+                Henüz randevu kaydı yok.
+              </div>
+            ) : null}
           </div>
-        ) : null}
+        </div>
       </section>
     </div>
   );

@@ -36,19 +36,21 @@ export default async function StaffPage() {
         </Link>
       </div>
       <section className="overflow-hidden rounded-[24px] border border-border bg-surface shadow-panel">
-        <div className="grid grid-cols-[1.3fr_0.8fr_0.7fr_0.7fr_0.7fr_72px] border-b border-border bg-muted/50 p-3 text-xs font-semibold text-muted-foreground">
-          <span>Personel</span>
-          <span>Rol</span>
-          <span>Şube</span>
-          <span>Doluluk</span>
-          <span>Ciro</span>
-          <span />
-        </div>
-        {staffMembers.map((staff) => (
-          <article
-            key={staff.id}
-            className="grid grid-cols-[1.3fr_0.8fr_0.7fr_0.7fr_0.7fr_72px] items-center gap-3 border-b border-border p-3 text-sm last:border-b-0"
-          >
+        <div className="overflow-x-auto">
+          <div className="min-w-[760px]">
+            <div className="grid grid-cols-[1.3fr_0.8fr_0.7fr_0.7fr_0.7fr_72px] border-b border-border bg-muted/50 p-3 text-xs font-semibold text-muted-foreground">
+              <span>Personel</span>
+              <span>Rol</span>
+              <span>Şube</span>
+              <span>Doluluk</span>
+              <span>Ciro</span>
+              <span />
+            </div>
+            {staffMembers.map((staff) => (
+              <article
+                key={staff.id}
+                className="grid grid-cols-[1.3fr_0.8fr_0.7fr_0.7fr_0.7fr_72px] items-center gap-3 border-b border-border p-3 text-sm last:border-b-0"
+              >
             <div className="flex items-center gap-3">
               <div className="grid size-11 place-items-center rounded-2xl bg-primary/10 font-semibold text-primary">
                 {staff.name
@@ -73,13 +75,15 @@ export default async function StaffPage() {
             >
               <Pencil size={15} />
             </Link>
-          </article>
-        ))}
-        {staffMembers.length === 0 ? (
-          <div className="p-4 text-sm text-muted-foreground">
-            Henüz personel kaydı yok.
+              </article>
+            ))}
+            {staffMembers.length === 0 ? (
+              <div className="p-4 text-sm text-muted-foreground">
+                Henüz personel kaydı yok.
+              </div>
+            ) : null}
           </div>
-        ) : null}
+        </div>
       </section>
     </div>
   );

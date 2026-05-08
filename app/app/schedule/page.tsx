@@ -139,6 +139,10 @@ export default async function SchedulePage({ searchParams }: SchedulePageProps) 
           emptyText="Bu gün için randevu kaydı yok."
           minColumnWidth={176}
           rowHeight={176}
+          showCurrentTime={dateKey === formatDateKey(new Date())}
+          slotHref={(staffId, time) =>
+            `/app/calendar/new?staffId=${staffId}&startsAt=${dateKey}T${time}`
+          }
         />
       ) : (
         <div className="rounded-[22px] border border-border bg-surface p-4 text-sm text-muted-foreground shadow-panel">

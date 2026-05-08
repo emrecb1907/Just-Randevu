@@ -66,7 +66,6 @@ export default async function EditBusinessPage({ params }: EditBusinessPageProps
       </SurfaceCard>
       <form action={superAdminUpdateBusinessAction} className="grid gap-4 rounded-[22px] border border-border bg-surface p-5 shadow-panel md:grid-cols-2">
         <input type="hidden" name="businessId" value={business.id} />
-        <input type="hidden" name="slotMinutes" value={business.slotMinutes} />
         <label className="text-sm font-medium">İşletme adı<input name="name" required minLength={2} defaultValue={business.name} className="mt-2 min-h-11 w-full rounded-xl border border-border bg-background px-3" /></label>
         <label className="text-sm font-medium">E-posta<input name="email" type="email" defaultValue={business.email} className="mt-2 min-h-11 w-full rounded-xl border border-border bg-background px-3" /></label>
         <PhoneInput defaultValue={business.phone} required={false} />

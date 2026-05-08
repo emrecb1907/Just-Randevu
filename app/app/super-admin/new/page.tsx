@@ -23,7 +23,6 @@ export default async function NewBusinessPage() {
       </div>
       <form action={superAdminCreateBusinessAction} className="grid gap-4 rounded-[22px] border border-border bg-surface p-5 shadow-panel md:grid-cols-2">
         <input type="hidden" name="kvkkConsent" value="on" />
-        <input type="hidden" name="slotMinutes" value="15" />
         <label className="text-sm font-medium">İşletme adı<input name="businessName" required minLength={2} className="mt-2 min-h-11 w-full rounded-xl border border-border bg-background px-3" placeholder="Yeni İşletme" /></label>
         <label className="text-sm font-medium">Admin ad soyad<input name="ownerName" required minLength={2} className="mt-2 min-h-11 w-full rounded-xl border border-border bg-background px-3" placeholder="İşletme Admini" /></label>
         <label className="text-sm font-medium">Admin e-posta<input name="email" type="email" required className="mt-2 min-h-11 w-full rounded-xl border border-border bg-background px-3" placeholder="admin@isletme.com" /></label>

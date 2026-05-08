@@ -129,7 +129,6 @@ const businessId = await assertNoError(
     business_email: adminEmail,
     business_phone: "+905551112233",
     selected_plan: "premium",
-    selected_slot_minutes: 15,
   }),
 );
 
@@ -397,7 +396,6 @@ await assertNoError(
     business_email: adminEmail,
     business_phone: "+905551112233",
     selected_plan: "premium",
-    selected_slot_minutes: 10,
     target_is_active: true,
   }),
 );

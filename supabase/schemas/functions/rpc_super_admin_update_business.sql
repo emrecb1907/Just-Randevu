@@ -1,6 +1,7 @@
 drop function if exists public.rpc_super_admin_update_business(uuid, text, text, text, public.plan_key, integer, boolean) cascade;
 drop function if exists public.rpc_super_admin_update_business(uuid, text, text, text, public.plan_key, integer, time, time, boolean) cascade;
 drop function if exists public.rpc_super_admin_update_business(uuid, text, text, text, public.plan_key, boolean, integer, time, time) cascade;
+drop function if exists public.rpc_super_admin_update_business(uuid, text, text, text, public.plan_key, boolean, time, time) cascade;
 
 create or replace function public.rpc_super_admin_update_business(
   target_business_id uuid,
@@ -9,7 +10,6 @@ create or replace function public.rpc_super_admin_update_business(
   business_phone text,
   selected_plan public.plan_key,
   target_is_active boolean,
-  selected_slot_minutes integer default 15,
   business_opens_at time default '09:00',
   business_closes_at time default '18:00'
 )
@@ -24,7 +24,6 @@ begin
       email = business_email,
       phone = business_phone,
       plan_key = selected_plan,
-      slot_minutes = selected_slot_minutes,
       is_active = target_is_active,
       updated_at = now()
   where id = target_business_id
