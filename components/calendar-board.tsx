@@ -1,4 +1,4 @@
-import { CalendarDays, ChevronLeft, ChevronRight, Filter, Search } from "lucide-react";
+import { CalendarDays } from "lucide-react";
 
 import { TimelineGrid, type TimelineEvent } from "@/components/timeline-grid";
 import type { Appointment } from "@/lib/app-data";
@@ -83,29 +83,10 @@ export function CalendarBoard({
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <div className="flex min-h-11 items-center gap-2 rounded-xl border border-border bg-background px-3 text-sm text-muted-foreground">
-              <Search size={17} />
-              <span>Takvimde ara</span>
-            </div>
-            <button className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-border bg-background px-3 text-sm font-semibold">
-              <Filter size={16} />
-              Filtre
-            </button>
-            <div className="inline-flex min-h-11 overflow-hidden rounded-xl border border-border bg-muted p-1 text-sm font-semibold">
-              <button className="rounded-lg px-3 text-muted-foreground">Gün</button>
-              <button className="rounded-lg bg-surface px-3 shadow-sm">Hafta</button>
-              <button className="rounded-lg px-3 text-muted-foreground">Ay</button>
-            </div>
             <div className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-border bg-background px-3 text-sm font-semibold">
               <CalendarDays size={16} />
               {rangeLabel}
             </div>
-            <button className="grid min-h-11 min-w-11 place-items-center rounded-xl border border-border bg-background text-muted-foreground">
-              <ChevronLeft size={18} />
-            </button>
-            <button className="grid min-h-11 min-w-11 place-items-center rounded-xl border border-border bg-background text-muted-foreground">
-              <ChevronRight size={18} />
-            </button>
           </div>
         </div>
       </div>

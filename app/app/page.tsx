@@ -19,6 +19,13 @@ import {
 import { modules } from "@/lib/product-model";
 import { formatCurrency } from "@/lib/utils";
 
+function formatDateKey(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 export default async function AppPage() {
   const context = await requireUserContext();
 
@@ -115,6 +122,44 @@ export default async function AppPage() {
   const criticalStockCount = stockItems.filter(
     (item) => item.stock <= item.critical,
   ).length;
+  const todayKey = formatDateKey(new Date());
+  const todayAppointments = appointments.filter(
+    (appointment) => appointment.dateKey === todayKey,
+  );
+  const branchUsagePercent =
+    business.branchLimit > 0
+      ? Math.min(100, Math.round((branches.length / business.branchLimit) * 100))
+      : 0;
+  const staffUsagePercent =
+    business.staffLimitPerBranch > 0
+      ? Math.min(
+          100,
+          Math.round(
+            ((business.staffLimitScope === "branch"
+              ? Math.max(
+                  0,
+                  ...branches.map(
+                    (branch) =>
+                      staffMembers.filter((staff) => staff.branchId === branch.id)
+                        .length,
+                  ),
+                )
+              : staffMembers.length) /
+              business.staffLimitPerBranch) *
+              100,
+          ),
+        )
+      : 0;
+  const staffUsageCount =
+    business.staffLimitScope === "branch"
+      ? Math.max(
+          0,
+          ...branches.map(
+            (branch) =>
+              staffMembers.filter((staff) => staff.branchId === branch.id).length,
+          ),
+        )
+      : staffMembers.length;
 
   return (
     <div className="space-y-6">
@@ -142,8 +187,8 @@ export default async function AppPage() {
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <MetricCard
           label="Bugünkü randevu"
-          value={String(appointments.length)}
-          hint={`${appointments.filter((appointment) => appointment.status === "iptal").length} iptal · ${appointments.filter((appointment) => appointment.status === "gelmedi").length} gelmedi`}
+          value={String(todayAppointments.length)}
+          hint={`${todayAppointments.filter((appointment) => appointment.status === "iptal").length} iptal · ${todayAppointments.filter((appointment) => appointment.status === "gelmedi").length} gelmedi`}
           icon={CalendarDays}
         />
         <MetricCard
@@ -209,18 +254,28 @@ export default async function AppPage() {
                 </span>
               </div>
               <div className="mt-2 h-2 rounded-full bg-muted">
-                <div className="h-2 w-2/3 rounded-full bg-primary" />
+                <div
+                  className="h-2 rounded-full bg-primary"
+                  style={{ width: `${branchUsagePercent}%` }}
+                />
               </div>
             </div>
             <div>
               <div className="flex justify-between">
-                <span>Merkez personel</span>
+                <span>
+                  {business.staffLimitScope === "branch"
+                    ? "En yoğun şube personeli"
+                    : "Personel"}
+                </span>
                 <span className="font-semibold">
-                  {staffMembers.length} / {business.staffLimitPerBranch}
+                  {staffUsageCount} / {business.staffLimitPerBranch}
                 </span>
               </div>
               <div className="mt-2 h-2 rounded-full bg-muted">
-                <div className="h-2 w-3/5 rounded-full bg-accent" />
+                <div
+                  className="h-2 rounded-full bg-accent"
+                  style={{ width: `${staffUsagePercent}%` }}
+                />
               </div>
             </div>
           </div>

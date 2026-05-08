@@ -13,7 +13,41 @@ set search_path = public, app_private
 as $$
 declare
   created_member_id uuid;
+  active_member_count integer;
+  allowed_member_count integer;
+  limit_scope text;
 begin
+  select p.staff_limit, p.staff_limit_scope
+  into allowed_member_count, limit_scope
+  from public.businesses b
+  join public.plans p on p.key = b.plan_key
+  where b.id = target_business_id;
+
+  if limit_scope = 'branch' then
+    select count(*)
+    into active_member_count
+    from public.business_members bm
+    where bm.business_id = target_business_id
+      and bm.branch_id = target_branch_id
+      and bm.is_active = true;
+  else
+    select count(*)
+    into active_member_count
+    from public.business_members bm
+    where bm.business_id = target_business_id
+      and bm.is_active = true;
+  end if;
+
+  if active_member_count >= coalesce(allowed_member_count, 1)
+    and not exists (
+      select 1
+      from public.business_members bm
+      where bm.business_id = target_business_id
+        and bm.profile_id = staff_profile_id
+    ) then
+    raise exception 'Bu paketin personel limiti dolu.';
+  end if;
+
   insert into public.business_members (
     business_id,
     branch_id,

@@ -52,6 +52,7 @@ export type ModuleDefinition = {
   name: string;
   description: string;
   category: "core" | "premium" | "finance" | "operations";
+  availability: "ready" | "planned";
   icon: LucideIcon;
 };
 
@@ -61,6 +62,7 @@ export const modules: ModuleDefinition[] = [
     name: "Randevu Yönetimi",
     description: "Personel ve admin takvimleri, durum takibi, çakışma engeli.",
     category: "core",
+    availability: "ready",
     icon: CalendarDays,
   },
   {
@@ -68,6 +70,7 @@ export const modules: ModuleDefinition[] = [
     name: "Müşteri Takibi",
     description: "İşletmeye özel müşteri kayıtları, KVKK ve WhatsApp izinleri.",
     category: "core",
+    availability: "ready",
     icon: Users,
   },
   {
@@ -75,6 +78,7 @@ export const modules: ModuleDefinition[] = [
     name: "Personel",
     description: "Ekip profilleri, şube bağlantıları ve yetkiler.",
     category: "core",
+    availability: "ready",
     icon: UserCog,
   },
   {
@@ -82,6 +86,7 @@ export const modules: ModuleDefinition[] = [
     name: "Hizmetler",
     description: "Randevularda seçilecek hizmet, süre ve fiyat bilgileri.",
     category: "core",
+    availability: "ready",
     icon: ClipboardCheck,
   },
   {
@@ -89,6 +94,7 @@ export const modules: ModuleDefinition[] = [
     name: "WhatsApp Hatırlatma",
     description: "WhatsApp hatırlatma mesajları ve gönderim geçmişi.",
     category: "core",
+    availability: "planned",
     icon: MessageCircle,
   },
   {
@@ -96,6 +102,7 @@ export const modules: ModuleDefinition[] = [
     name: "Stok Yönetimi",
     description: "Ürün kartları, stok giriş/çıkış/düzeltme ve düşük stok uyarısı.",
     category: "operations",
+    availability: "ready",
     icon: Boxes,
   },
   {
@@ -103,6 +110,7 @@ export const modules: ModuleDefinition[] = [
     name: "Ürün Satışı",
     description: "Adisyona ürün satırı ekleme ve stoktan otomatik düşüm.",
     category: "operations",
+    availability: "planned",
     icon: ShoppingBag,
   },
   {
@@ -110,6 +118,7 @@ export const modules: ModuleDefinition[] = [
     name: "Adisyon Yönetimi",
     description: "Randevuya çoklu hizmet, ürün ve ödeme satırı bağlama.",
     category: "operations",
+    availability: "planned",
     icon: Receipt,
   },
   {
@@ -117,6 +126,7 @@ export const modules: ModuleDefinition[] = [
     name: "Gelir-Gider",
     description: "Tamamlanan randevudan gelir, manuel gider ve kasa özeti.",
     category: "finance",
+    availability: "ready",
     icon: WalletCards,
   },
   {
@@ -124,6 +134,7 @@ export const modules: ModuleDefinition[] = [
     name: "Cari Alacak",
     description: "Müşteri bazlı borç, tahsilat ve açık bakiye takibi.",
     category: "finance",
+    availability: "planned",
     icon: HandCoins,
   },
   {
@@ -131,6 +142,7 @@ export const modules: ModuleDefinition[] = [
     name: "Taksit Takibi",
     description: "Vadeli ödeme planı ve geciken taksit görünümü.",
     category: "finance",
+    availability: "planned",
     icon: FileText,
   },
   {
@@ -138,6 +150,7 @@ export const modules: ModuleDefinition[] = [
     name: "Borç ve Ödeme",
     description: "Nakit, kart, havale ve ödeme işlem geçmişi.",
     category: "finance",
+    availability: "planned",
     icon: CreditCard,
   },
   {
@@ -145,6 +158,7 @@ export const modules: ModuleDefinition[] = [
     name: "Personel Performansı",
     description: "Doluluk, gelir, işlem adedi, iptal ve gelmedi oranları.",
     category: "premium",
+    availability: "planned",
     icon: BarChart3,
   },
   {
@@ -152,6 +166,7 @@ export const modules: ModuleDefinition[] = [
     name: "Prim ve Hak Ediş",
     description: "Hizmet bazlı yüzde, sabit tutar ve personel kuralı.",
     category: "finance",
+    availability: "planned",
     icon: PackageCheck,
   },
   {
@@ -159,6 +174,7 @@ export const modules: ModuleDefinition[] = [
     name: "Memnuniyet Anketleri",
     description: "Randevu sonrası puanlama, yorum ve şube/personel raporu.",
     category: "premium",
+    availability: "planned",
     icon: Smile,
   },
   {
@@ -166,6 +182,7 @@ export const modules: ModuleDefinition[] = [
     name: "Gelişmiş Yetkilendirme",
     description: "Telefon, fiyat, tahsilat ve ekip görünümü izinleri.",
     category: "premium",
+    availability: "planned",
     icon: ShieldCheck,
   },
   {
@@ -173,6 +190,7 @@ export const modules: ModuleDefinition[] = [
     name: "Çoklu Şube",
     description: "Şube bazlı mesai, personel, stok, gelir ve takvim ayrımı.",
     category: "premium",
+    availability: "ready",
     icon: Building2,
   },
   {
@@ -180,9 +198,24 @@ export const modules: ModuleDefinition[] = [
     name: "Paket Satış ve Kullanım",
     description: "Paket aboneliği, plan limitleri ve modül kullanımı.",
     category: "premium",
+    availability: "ready",
     icon: Bell,
   },
 ];
+
+export const readyModules = modules.filter(
+  (module) => module.availability === "ready",
+);
+
+export const plannedModules = modules.filter(
+  (module) => module.availability === "planned",
+);
+
+export const readyModuleKeys = readyModules.map((module) => module.key);
+
+export function isReadyModule(moduleKey: ModuleKey) {
+  return readyModuleKeys.includes(moduleKey);
+}
 
 export const plans = {
   standard: {

@@ -16,8 +16,6 @@ export default async function FinancePage() {
     ["Günlük gelir", financeSummary.dailyRevenueCents],
     ["Aylık gelir", financeSummary.monthlyRevenueCents],
     ["Gider", financeSummary.expensesCents],
-    ["Cari alacak", financeSummary.receivablesCents],
-    ["Vadesi gelen taksit", financeSummary.installmentDueCents],
   ] as const;
 
   return (
@@ -42,7 +40,7 @@ export default async function FinancePage() {
         </Link>
       </div>
       <section className="rounded-[24px] border border-border bg-surface p-4">
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+        <div className="grid gap-3 md:grid-cols-3">
           {rows.map(([label, value]) => (
             <div
               key={label}

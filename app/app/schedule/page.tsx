@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CalendarClock, ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import { CalendarClock, ChevronLeft, ChevronRight } from "lucide-react";
 
 import { TimelineGrid, type TimelineEvent } from "@/components/timeline-grid";
 import { getTenantDataset, requireTenantContext } from "@/lib/app-data";
@@ -80,16 +80,10 @@ export default async function SchedulePage({ searchParams }: SchedulePageProps) 
             Personel Doluluk Takvimi
           </h1>
           <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-            Seçili günde personellerin yalnızca randevu doluluklarını görün.
+            Seçili günde personel doluluğunu görün; boş saatlerden randevu
+            başlatın.
           </p>
         </div>
-        <Link
-          href="/app/calendar/new"
-          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-bold text-white shadow-sm"
-        >
-          <Plus size={16} />
-          Randevu oluştur
-        </Link>
       </div>
 
       <section className="rounded-[24px] border border-border bg-surface p-4 shadow-panel lg:p-5">

@@ -46,29 +46,26 @@ npm run check      # typecheck + lint + test
 
 ## Supabase
 
-Migration kaynakları klasörlere ayrıldı:
+Bu repo Supabase tarafında declarative schema dosyaları kullanır. Yeni SQL
+eklenirse ilgili klasöre koyun ve `supabase/config.toml` içindeki
+`schema_paths` listesine sıralı şekilde ekleyin:
 
 ```txt
-supabase/migrations/tables/
-supabase/migrations/functions/
-supabase/migrations/policies/
-supabase/migrations/seeds/
+supabase/schemas/tables/
+supabase/schemas/functions/
+supabase/schemas/triggers/
+supabase/schemas/policies/
+supabase/schemas/indexes/
+supabase/schemas/grants/
+supabase/schemas/seeds/
 ```
 
-Supabase CLI uyumlu versioned migration dosyaları:
-
-```txt
-supabase/migrations/20260508003531_initial_schema.sql
-supabase/migrations/202605080200_app_rpc.sql
-supabase/migrations/202605080210_profiles_email.sql
-supabase/migrations/202605080220_profile_and_bootstrap_rpc.sql
-supabase/migrations/20260508093851_role_context_rpc.sql
-```
-
-Remote projeye uygulamak için:
+Remote projeyi schema dosyalarıyla güncellemeden önce yerel dosyaları
+güncelleyin, ardından aynı SQL'i Supabase üzerinde uygulayın ve advisor
+çıktılarını kontrol edin.
 
 ```bash
-supabase db push
+npm run check
 ```
 
 ## RPC Yaşam Döngüleri

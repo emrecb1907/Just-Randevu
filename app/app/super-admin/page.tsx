@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Building2, CreditCard, Pencil, Plus, Search, UserRound } from "lucide-react";
+import { Building2, CreditCard, Pencil, Plus, Search } from "lucide-react";
 
 import { getSystemDataset, requireSuperAdminContext } from "@/lib/app-data";
 import { formatCurrency } from "@/lib/utils";
@@ -87,7 +87,7 @@ export default async function SuperAdminPage({
         <div className="overflow-hidden rounded-[18px] border border-border">
           <div className="overflow-x-auto">
             <div className="min-w-[860px]">
-              <div className="grid grid-cols-[1.2fr_0.75fr_0.75fr_0.8fr_1fr_92px] border-b border-border bg-muted/50 p-3 text-xs font-semibold text-muted-foreground">
+              <div className="grid grid-cols-[1.2fr_0.75fr_0.75fr_0.8fr_1fr_52px] border-b border-border bg-muted/50 p-3 text-xs font-semibold text-muted-foreground">
                 <span>İşletme</span>
                 <span>Plan</span>
                 <span>Abonelik</span>
@@ -98,7 +98,7 @@ export default async function SuperAdminPage({
               {businesses.map((business) => (
                 <article
                   key={business.id}
-                  className="grid grid-cols-[1.2fr_0.75fr_0.75fr_0.8fr_1fr_92px] gap-3 border-b border-border p-3 text-sm last:border-b-0"
+                  className="grid grid-cols-[1.2fr_0.75fr_0.75fr_0.8fr_1fr_52px] gap-3 border-b border-border p-3 text-sm last:border-b-0"
                 >
               <div className="min-w-0">
                 <p className="truncate font-semibold">{business.name}</p>
@@ -114,13 +114,6 @@ export default async function SuperAdminPage({
                 {business.enabledModuleCount} modül
               </span>
               <div className="flex items-center justify-end gap-2">
-                <Link
-                  href={`/app/super-admin/${business.id}/edit`}
-                  className="grid size-10 place-items-center rounded-xl border border-border bg-background text-muted-foreground hover:text-foreground"
-                  aria-label={`${business.name} profiline git`}
-                >
-                  <UserRound size={16} />
-                </Link>
                 <Link
                   href={`/app/super-admin/${business.id}/edit`}
                   className="grid size-10 place-items-center rounded-xl border border-border bg-background text-muted-foreground hover:text-foreground"

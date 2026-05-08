@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { AlertCircle, Clock3, Lock, Plus } from "lucide-react";
+import { AlertCircle, Check, Clock3, Lock, Plus, Search } from "lucide-react";
 
 import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
 import type {
@@ -23,6 +23,8 @@ const appointmentStatuses = [
   "iptal",
   "gelmedi",
 ] as const;
+
+const customerResultLimit = 8;
 
 type AppointmentFormMode = "create" | "edit";
 
@@ -126,6 +128,14 @@ function overlaps(
   return startMinute < appointmentEnd && endMinute > appointmentStart;
 }
 
+function normalizeCustomerSearch(value: string) {
+  return value.toLocaleLowerCase("tr-TR").replace(/\D/g, "");
+}
+
+function normalizeCustomerText(value: string) {
+  return value.toLocaleLowerCase("tr-TR").trim();
+}
+
 export function AppointmentForm({
   mode,
   businessId,
@@ -147,13 +157,20 @@ export function AppointmentForm({
 }: AppointmentFormProps) {
   const normalizedDefault = parseQueryLikeDate(defaultStartsAt);
   const defaultParts = toLocalParts(normalizedDefault);
+  const defaultCustomer = defaultCustomerId
+    ? customers.find((customer) => customer.id === defaultCustomerId)
+    : undefined;
   const [branchId, setBranchId] = useState(defaultBranchId ?? branches[0]?.id ?? "");
-  const [customerId, setCustomerId] = useState(defaultCustomerId ?? customers[0]?.id ?? "");
+  const [customerId, setCustomerId] = useState(defaultCustomer?.id ?? "");
+  const [customerQuery, setCustomerQuery] = useState(
+    defaultCustomer ? `${defaultCustomer.name} ${defaultCustomer.phone}` : "",
+  );
   const [staffId, setStaffId] = useState(defaultStaffId ?? staffMembers[0]?.id ?? "");
   const [serviceId, setServiceId] = useState(defaultServiceId ?? services[0]?.id ?? "");
   const [selectedDate, setSelectedDate] = useState(defaultParts.date);
   const [selectedTime, setSelectedTime] = useState(defaultParts.time);
   const selectedService = services.find((service) => service.id === serviceId);
+  const selectedCustomer = customers.find((customer) => customer.id === customerId);
   const selectedDuration = selectedService?.duration ?? 30;
   const dayHours = businessHours.find(
     (item) => item.weekday === weekdayFromDate(selectedDate),
@@ -200,8 +217,27 @@ export function AppointmentForm({
     selectedDuration,
     staffId,
   ]);
+  const filteredCustomers = useMemo(() => {
+    const textQuery = normalizeCustomerText(customerQuery);
+    const digitQuery = normalizeCustomerSearch(customerQuery);
+    const matches = customerQuery.trim()
+      ? customers.filter((customer) => {
+          const haystack = normalizeCustomerText(
+            `${customer.name} ${customer.firstName} ${customer.lastName} ${customer.email}`,
+          );
+          const phone = normalizeCustomerSearch(customer.phone);
+
+          return (
+            haystack.includes(textQuery) ||
+            Boolean(digitQuery && phone.includes(digitQuery))
+          );
+        })
+      : customers;
+
+    return matches.slice(0, customerResultLimit);
+  }, [customerQuery, customers]);
   const selectedSlot = timeOptions.find((option) => option.value === selectedTime);
-  const canSubmit = Boolean(selectedSlot && !selectedSlot.busy);
+  const canSubmit = Boolean(customerId && selectedSlot && !selectedSlot.busy);
   const startsAtValue = canSubmit ? `${selectedDate}T${selectedTime}` : "";
   const busyCount = timeOptions.filter((option) => option.busy).length;
 
@@ -215,6 +251,7 @@ export function AppointmentForm({
         <input type="hidden" name="appointmentId" value={appointmentId} />
       ) : null}
       <input type="hidden" name="startsAt" value={startsAtValue} required />
+      <input type="hidden" name="customerId" value={customerId} required />
 
       <label className="text-sm font-medium">
         Şube
@@ -233,22 +270,80 @@ export function AppointmentForm({
         </select>
       </label>
 
-      <label className="text-sm font-medium">
-        Müşteri
-        <select
-          name="customerId"
-          required
-          value={customerId}
-          onChange={(event) => setCustomerId(event.target.value)}
-          className="mt-2 min-h-11 w-full rounded-xl border border-border bg-background px-3"
-        >
-          {customers.map((customer) => (
-            <option key={customer.id} value={customer.id}>
-              {customer.name}
-            </option>
-          ))}
-        </select>
-      </label>
+      <div className="text-sm font-medium">
+        <label htmlFor="appointment-customer-search">Müşteri</label>
+        <div className="mt-2 flex min-h-11 items-center gap-2 rounded-xl border border-border bg-background px-3">
+          <Search size={17} className="shrink-0 text-muted-foreground" />
+          <input
+            id="appointment-customer-search"
+            value={customerQuery}
+            onChange={(event) => {
+              const nextValue = event.target.value;
+
+              setCustomerQuery(nextValue);
+
+              if (
+                nextValue.trim() === "" ||
+                selectedCustomer &&
+                !`${selectedCustomer.name} ${selectedCustomer.phone}`
+                  .toLocaleLowerCase("tr-TR")
+                  .includes(nextValue.toLocaleLowerCase("tr-TR"))
+              ) {
+                setCustomerId("");
+              }
+            }}
+            placeholder="İsim veya telefon ile ara"
+            className="min-w-0 flex-1 bg-transparent text-sm outline-none"
+            autoComplete="off"
+          />
+        </div>
+        <div className="mt-2 max-h-56 overflow-y-auto rounded-xl border border-border bg-background p-1">
+          {filteredCustomers.map((customer) => {
+            const selected = customer.id === customerId;
+
+            return (
+              <button
+                key={customer.id}
+                type="button"
+                onClick={() => {
+                  setCustomerId(customer.id);
+                  setCustomerQuery(`${customer.name} ${customer.phone}`);
+                }}
+                className="flex min-h-11 w-full items-center justify-between gap-3 rounded-lg px-3 text-left transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/25 focus-visible:ring-inset"
+              >
+                <span className="min-w-0">
+                  <span className="block truncate font-semibold">
+                    {customer.name}
+                  </span>
+                  <span className="block truncate text-xs text-muted-foreground">
+                    {customer.phone}
+                  </span>
+                </span>
+                {selected ? (
+                  <Check size={17} className="shrink-0 text-primary" />
+                ) : null}
+              </button>
+            );
+          })}
+          {filteredCustomers.length === 0 ? (
+            <div className="px-3 py-2 text-sm text-muted-foreground">
+              Müşteri bulunamadı.
+            </div>
+          ) : null}
+        </div>
+        {selectedCustomer ? (
+          <p className="mt-2 text-xs text-muted-foreground">
+            Seçili müşteri:{" "}
+            <span className="font-semibold text-foreground">
+              {selectedCustomer.name}
+            </span>
+          </p>
+        ) : (
+          <p className="mt-2 text-xs text-amber-700">
+            Randevu için listeden bir müşteri seçin.
+          </p>
+        )}
+      </div>
 
       <label className="text-sm font-medium">
         Personel
@@ -336,7 +431,9 @@ export function AppointmentForm({
           <div className="mt-3 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-amber-900">
             {selectedSlot?.busy ? <Lock size={17} /> : <AlertCircle size={17} />}
             <p>
-              {selectedSlot?.busy
+              {!customerId
+                ? "Randevu oluşturmak için önce müşteri seçin."
+                : selectedSlot?.busy
                 ? "Bu personelde seçilen aralık dolu. Listeden boş bir saat seçin."
                 : "Seçilen hizmet bu mesai aralığına sığmıyor veya işletme o gün kapalı."}
             </p>

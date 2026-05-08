@@ -651,13 +651,14 @@ export async function getTenantDataset(
     }));
 
     const customers: CustomerItem[] = asArray(root.customers).map((customer) => {
+      const customerId = asString(customer.id);
       const customerPhone = asString(customer.phone);
       const latestAppointment = appointments
-        .filter((appointment) => appointment.phone === customerPhone)
+        .filter((appointment) => appointment.customerId === customerId)
         .at(-1);
 
       return {
-        id: asString(customer.id),
+        id: customerId,
         branchId: asString(customer.branch_id),
         firstName: asString(customer.first_name),
         lastName: asString(customer.last_name),

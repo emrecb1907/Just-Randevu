@@ -9,7 +9,8 @@ type ModuleCardProps = {
 
 export function ModuleCard({ module, activeModules }: ModuleCardProps) {
   const Icon = module.icon;
-  const active = activeModules.includes(module.key);
+  const ready = module.availability === "ready";
+  const active = ready && activeModules.includes(module.key);
 
   return (
     <SurfaceCard as="article" className="shadow-sm">
@@ -30,10 +31,12 @@ export function ModuleCard({ module, activeModules }: ModuleCardProps) {
                 "rounded-full px-2 py-1 text-[11px] font-semibold",
                 active
                   ? "bg-primary/10 text-primary"
+                  : !ready
+                    ? "bg-amber-50 text-amber-800"
                   : "bg-muted text-muted-foreground",
               )}
             >
-              {active ? "Açık" : "Kapalı"}
+              {ready ? (active ? "Açık" : "Kapalı") : "Hazırlanıyor"}
             </span>
           </div>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">

@@ -61,6 +61,22 @@ function assertBusinessScope(formData: FormData, expectedBusinessId: string) {
   }
 }
 
+async function assertModuleEnabled(
+  membership: Awaited<ReturnType<typeof requireTenantContext>>["membership"],
+  moduleKey: "finance" | "stock",
+  redirectPath: string,
+) {
+  const dataset = await getTenantDataset(membership);
+
+  if (!dataset.activeModules.includes(moduleKey)) {
+    redirect(
+      `${redirectPath}?error=${encodeURIComponent("Bu özellik paketinizde açık değil.")}`,
+    );
+  }
+
+  return dataset;
+}
+
 function splitName(fullName: string) {
   const parts = fullName.trim().split(/\s+/);
   const firstName = parts.shift() ?? fullName;
@@ -515,6 +531,19 @@ export async function createStaffAction(formData: FormData) {
   const { membership } = await requireTenantContext();
   assertBusinessScope(formData, membership.businessId);
   const input = staffCreateSchema.parse(formObject(formData));
+  const dataset = await getTenantDataset(membership);
+  const staffCount =
+    dataset.business.staffLimitScope === "branch"
+      ? dataset.staffMembers.filter((staff) => staff.branchId === input.branchId)
+          .length
+      : dataset.staffMembers.length;
+
+  if (staffCount >= dataset.business.staffLimitPerBranch) {
+    redirect(
+      `/app/staff?error=${encodeURIComponent("Bu paketin personel limiti dolu.")}`,
+    );
+  }
+
   const admin = createSupabaseAdminClient();
   const { data: userData, error: userError } =
     await admin.auth.admin.createUser({
@@ -741,6 +770,7 @@ export async function updateStaffScheduleAction(formData: FormData) {
 export async function createProductAction(formData: FormData) {
   const { membership } = await requireTenantContext();
   assertBusinessScope(formData, membership.businessId);
+  await assertModuleEnabled(membership, "stock", "/app/settings");
   const input = productCreateSchema.parse(formObject(formData));
   const admin = createSupabaseAdminClient();
   const { error } = await admin.rpc("rpc_create_product_with_stock", {
@@ -765,6 +795,7 @@ export async function createProductAction(formData: FormData) {
 export async function updateProductAction(formData: FormData) {
   const { membership } = await requireTenantContext();
   assertBusinessScope(formData, membership.businessId);
+  await assertModuleEnabled(membership, "stock", "/app/settings");
   const input = productUpdateSchema.parse(formObject(formData));
   const admin = createSupabaseAdminClient();
   const { error } = await admin.rpc("rpc_update_product", {
@@ -787,6 +818,7 @@ export async function updateProductAction(formData: FormData) {
 export async function deleteProductAction(formData: FormData) {
   const { membership } = await requireTenantContext();
   assertBusinessScope(formData, membership.businessId);
+  await assertModuleEnabled(membership, "stock", "/app/settings");
   const input = deleteEntitySchema.parse({ id: formString(formData, "productId") });
   const admin = createSupabaseAdminClient();
   const { error } = await admin.rpc("rpc_delete_product", {
@@ -805,6 +837,7 @@ export async function deleteProductAction(formData: FormData) {
 export async function createIncomeExpenseAction(formData: FormData) {
   const { membership } = await requireTenantContext();
   assertBusinessScope(formData, membership.businessId);
+  await assertModuleEnabled(membership, "finance", "/app/settings");
   const input = incomeExpenseSchema.parse(formObject(formData));
   const admin = createSupabaseAdminClient();
   const { error } = await admin.rpc("rpc_record_income_expense", {
@@ -829,6 +862,7 @@ export async function createIncomeExpenseAction(formData: FormData) {
 export async function updateIncomeExpenseAction(formData: FormData) {
   const { membership } = await requireTenantContext();
   assertBusinessScope(formData, membership.businessId);
+  await assertModuleEnabled(membership, "finance", "/app/settings");
   const input = incomeExpenseUpdateSchema.parse(formObject(formData));
   const admin = createSupabaseAdminClient();
   const { error } = await admin.rpc("rpc_update_income_expense", {
@@ -854,6 +888,7 @@ export async function updateIncomeExpenseAction(formData: FormData) {
 export async function deleteIncomeExpenseAction(formData: FormData) {
   const { membership } = await requireTenantContext();
   assertBusinessScope(formData, membership.businessId);
+  await assertModuleEnabled(membership, "finance", "/app/settings");
   const input = deleteEntitySchema.parse({ id: formString(formData, "financeId") });
   const admin = createSupabaseAdminClient();
   const { error } = await admin.rpc("rpc_delete_income_expense", {

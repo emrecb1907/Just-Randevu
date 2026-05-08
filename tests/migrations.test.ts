@@ -1,4 +1,4 @@
-import { readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -12,6 +12,20 @@ function readSchemaDir(dirName: string) {
     .join("\n");
 }
 
+function listSqlFiles(dir: string): string[] {
+  return readdirSync(dir)
+    .flatMap((fileName) => {
+      const filePath = join(dir, fileName);
+
+      return statSync(filePath).isDirectory()
+        ? listSqlFiles(filePath)
+        : filePath.endsWith(".sql")
+          ? [filePath]
+          : [];
+    })
+    .sort();
+}
+
 describe("Supabase declarative schema", () => {
   it("keeps RPC lifecycle functions in their own schema files", () => {
     const sql = `${readSchemaDir("functions")}\n${readSchemaDir("grants")}`;
@@ -23,6 +37,7 @@ describe("Supabase declarative schema", () => {
       "rpc_upsert_profile",
       "rpc_bootstrap_super_admin",
       "rpc_create_business_with_owner",
+      "rpc_create_branch",
       "rpc_create_staff_member",
       "rpc_create_customer",
       "rpc_create_service",
@@ -33,6 +48,7 @@ describe("Supabase declarative schema", () => {
       "rpc_create_appointment",
       "rpc_update_appointment",
       "rpc_delete_appointment",
+      "rpc_delete_branch",
       "rpc_update_customer",
       "rpc_delete_customer",
       "rpc_update_service",
@@ -45,12 +61,27 @@ describe("Supabase declarative schema", () => {
       "rpc_delete_income_expense",
       "rpc_super_admin_update_business",
       "rpc_super_admin_delete_business",
+      "rpc_super_admin_update_plan",
+      "rpc_update_branch",
+      "rpc_upsert_staff_working_hour",
     ].forEach((functionName) => {
       expect(sql).toContain(`function public.${functionName}`);
     });
 
     expect(sql).toContain("revoke execute on function");
     expect(sql).toContain("grant execute on function");
+  });
+
+  it("includes every schema SQL file in the ordered Supabase schema list", () => {
+    const config = readFileSync(join(root, "supabase/config.toml"), "utf8");
+    const listedFiles = Array.from(
+      config.matchAll(/"\.\/schemas\/([^"]+)"/g),
+      (match) => join(root, "supabase/schemas", match[1] ?? ""),
+    ).sort();
+    const schemaFiles = listSqlFiles(join(root, "supabase/schemas"));
+
+    expect(listedFiles.filter((filePath) => !existsSync(filePath))).toEqual([]);
+    expect(schemaFiles.filter((filePath) => !listedFiles.includes(filePath))).toEqual([]);
   });
 
   it("keeps tenant RLS policies and tenant keys in declarative schema files", () => {
@@ -84,5 +115,27 @@ describe("Supabase declarative schema", () => {
     expect(tableSql).toContain("price_snapshot_cents integer not null");
     expect(functionSql).toContain("price_snapshot_cents");
     expect(functionSql).toContain("p.monthly_price_cents");
+  });
+
+  it("keeps appointment prices fixed when the same service is edited later", () => {
+    const sql = readFileSync(
+      join(root, "supabase/schemas/functions/rpc_update_appointment.sql"),
+      "utf8",
+    );
+
+    expect(sql).toContain("old_price_cents");
+    expect(sql).toContain("effective_price_cents := coalesce(old_price_cents");
+    expect(sql).toContain("total_price_cents = effective_price_cents");
+  });
+
+  it("enforces staff limits in the staff creation RPC", () => {
+    const sql = readFileSync(
+      join(root, "supabase/schemas/functions/rpc_create_staff_member.sql"),
+      "utf8",
+    );
+
+    expect(sql).toContain("p.staff_limit");
+    expect(sql).toContain("p.staff_limit_scope");
+    expect(sql).toContain("Bu paketin personel limiti dolu.");
   });
 });

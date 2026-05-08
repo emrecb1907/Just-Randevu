@@ -5,13 +5,11 @@ import { usePathname } from "next/navigation";
 import type { CSSProperties, ReactNode } from "react";
 import { useState } from "react";
 import {
-  Bell,
   ChevronDown,
   LogOut,
   Menu,
   PanelLeftClose,
   PanelLeftOpen,
-  Search,
   Store,
   UserRound,
   X,
@@ -244,23 +242,7 @@ export function AppShell({
         style={{ left: sidebarWidth } as CSSProperties}
       >
         <header className="sticky top-16 z-20 flex min-h-16 shrink-0 min-w-0 items-center gap-3 border-b border-border bg-surface/95 px-4 backdrop-blur lg:static lg:px-7">
-          <div className="hidden max-w-md flex-1 min-w-0 items-center gap-2 rounded-xl border border-border bg-background px-3 lg:flex">
-            <Search size={17} className="text-muted-foreground" />
-            <input
-              className="min-h-11 flex-1 bg-transparent text-sm outline-none"
-              placeholder="Müşteri, randevu, personel ara"
-              aria-label="Ara"
-            />
-          </div>
           <div className="ml-auto flex min-w-0 items-center gap-2">
-            <button
-              type="button"
-              className="relative grid min-h-11 min-w-11 place-items-center rounded-xl border border-border bg-background"
-              aria-label="Bildirimler"
-            >
-              <Bell size={18} />
-              <span className="absolute right-2 top-2 size-2 rounded-full bg-accent" />
-            </button>
             <ThemeToggle />
             {isSuperAdmin ? null : (
               <Link

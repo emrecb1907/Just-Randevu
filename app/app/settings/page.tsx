@@ -5,7 +5,7 @@ import {
 import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
 import { SurfaceCard } from "@/components/surface-card";
 import { getTenantDataset, requireTenantContext } from "@/lib/app-data";
-import { modules, plans } from "@/lib/product-model";
+import { plannedModules, plans, readyModules } from "@/lib/product-model";
 import type { ModuleKey } from "@/lib/product-model";
 import { cn, formatCurrency } from "@/lib/utils";
 
@@ -116,13 +116,13 @@ export default async function SettingsPage() {
       <section className="overflow-hidden rounded-[24px] border border-border bg-surface shadow-panel">
         <div className="border-b border-border p-4 sm:p-5">
           <p className="text-sm font-semibold text-primary">Modüller</p>
-          <h2 className="mt-1 text-xl font-semibold">Açık Özellikler</h2>
+          <h2 className="mt-1 text-xl font-semibold">Kullanımdaki Özellikler</h2>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">
-            İşletmenin kullanacağı özellikleri tek listeden yönetin.
+            İşletmenin kullanacağı hazır özellikleri buradan açıp kapatın.
           </p>
         </div>
         <div className="divide-y divide-border">
-          {modules.map((module) => {
+          {readyModules.map((module) => {
             const Icon = module.icon;
             const isActive = activeModules.includes(module.key);
             const isIncluded = includedModules.includes(module.key);
@@ -198,6 +198,51 @@ export default async function SettingsPage() {
                   </button>
                 </form>
               </div>
+            );
+          })}
+        </div>
+      </section>
+      <section className="overflow-hidden rounded-[24px] border border-border bg-surface shadow-panel">
+        <div className="border-b border-border p-4 sm:p-5">
+          <p className="text-sm font-semibold text-primary">Sıradaki Özellikler</p>
+          <h2 className="mt-1 text-xl font-semibold">Hazırlanan Modüller</h2>
+          <p className="mt-2 text-sm leading-6 text-muted-foreground">
+            Bu özellikler paket kapsamını gösterir; kullanıma açıldığında burada
+            yönetilebilir hale gelir.
+          </p>
+        </div>
+        <div className="grid gap-4 p-4 sm:p-5 md:grid-cols-2 xl:grid-cols-3">
+          {plannedModules.map((module) => {
+            const Icon = module.icon;
+            const isIncluded = includedModules.includes(module.key);
+
+            return (
+              <article
+                key={module.key}
+                className="rounded-2xl border border-border bg-background p-4"
+              >
+                <div className="flex min-w-0 items-start gap-3">
+                  <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-amber-50 text-amber-800">
+                    <Icon size={18} />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="font-semibold">{module.name}</h3>
+                      <span className="rounded-full bg-amber-50 px-2 py-1 text-[11px] font-bold text-amber-800">
+                        Hazırlanıyor
+                      </span>
+                      {!isIncluded ? (
+                        <span className="rounded-full bg-muted px-2 py-1 text-[11px] font-bold text-muted-foreground">
+                          Pakette yok
+                        </span>
+                      ) : null}
+                    </div>
+                    <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                      {module.description}
+                    </p>
+                  </div>
+                </div>
+              </article>
             );
           })}
         </div>

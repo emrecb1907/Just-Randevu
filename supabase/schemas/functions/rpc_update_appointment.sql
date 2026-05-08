@@ -21,6 +21,13 @@ declare
   service_row public.services%rowtype;
   day_hours public.business_hours%rowtype;
   old_status public.appointment_status;
+  old_service_id uuid;
+  old_service_name text;
+  old_duration_minutes integer;
+  old_price_cents integer;
+  effective_service_name text;
+  effective_duration_minutes integer;
+  effective_price_cents integer;
   appointment_start_local timestamp;
   appointment_end_local timestamp;
 begin
@@ -34,6 +41,21 @@ begin
     raise exception 'Randevu kaydı bulunamadı.';
   end if;
 
+  select
+    aps.service_id,
+    aps.service_name_snapshot,
+    aps.duration_minutes_snapshot,
+    aps.price_snapshot_cents
+  into
+    old_service_id,
+    old_service_name,
+    old_duration_minutes,
+    old_price_cents
+  from public.appointment_services aps
+  where aps.appointment_id = target_appointment_id
+  order by aps.id asc
+  limit 1;
+
   select *
   into service_row
   from public.services
@@ -45,12 +67,22 @@ begin
     raise exception 'Hizmet kaydı bulunamadı.';
   end if;
 
+  if old_service_id = service_row.id then
+    effective_service_name := coalesce(old_service_name, service_row.name);
+    effective_duration_minutes := coalesce(old_duration_minutes, service_row.duration_minutes);
+    effective_price_cents := coalesce(old_price_cents, service_row.default_price_cents);
+  else
+    effective_service_name := service_row.name;
+    effective_duration_minutes := service_row.duration_minutes;
+    effective_price_cents := service_row.default_price_cents;
+  end if;
+
   if mod(extract(minute from appointment_starts_at at time zone 'Europe/Istanbul')::integer, 5) <> 0 then
     raise exception 'Randevu dakikası 5 dakikalık aralıklarla seçilmeli.';
   end if;
 
   appointment_start_local := appointment_starts_at at time zone 'Europe/Istanbul';
-  appointment_end_local := (appointment_starts_at + make_interval(mins => service_row.duration_minutes)) at time zone 'Europe/Istanbul';
+  appointment_end_local := (appointment_starts_at + make_interval(mins => effective_duration_minutes)) at time zone 'Europe/Istanbul';
 
   select *
   into day_hours
@@ -71,10 +103,10 @@ begin
       customer_id = target_customer_id,
       staff_member_id = target_staff_member_id,
       starts_at = appointment_starts_at,
-      ends_at = appointment_starts_at + make_interval(mins => service_row.duration_minutes),
+      ends_at = appointment_starts_at + make_interval(mins => effective_duration_minutes),
       status = appointment_status,
       note = nullif(appointment_note, ''),
-      total_price_cents = service_row.default_price_cents,
+      total_price_cents = effective_price_cents,
       updated_at = now()
   where id = target_appointment_id
     and business_id = target_business_id;
@@ -96,9 +128,9 @@ begin
   values (
     target_appointment_id,
     service_row.id,
-    service_row.name,
-    service_row.duration_minutes,
-    service_row.default_price_cents
+    effective_service_name,
+    effective_duration_minutes,
+    effective_price_cents
   );
 
   if old_status <> appointment_status then

@@ -30,6 +30,7 @@ export default async function NewAppointmentPage({
     primaryBranch && customers.length > 0 && staffMembers.length > 0 && services.length > 0;
   const requestedStartsAt = firstParam(params.startsAt);
   const requestedStaffId = firstParam(params.staffId);
+  const requestedCustomerId = firstParam(params.customerId);
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
@@ -53,6 +54,7 @@ export default async function NewAppointmentPage({
           appointments={appointments}
           businessHours={businessHours}
           defaultBranchId={primaryBranch.id}
+          defaultCustomerId={requestedCustomerId}
           defaultStaffId={requestedStaffId}
           defaultStartsAt={requestedStartsAt}
           action={createAppointmentAction}
