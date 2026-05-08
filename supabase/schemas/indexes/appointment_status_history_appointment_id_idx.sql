@@ -1,0 +1,3 @@
+drop index if exists public.appointment_status_history_appointment_id_idx;
+
+create index appointment_status_history_appointment_id_idx on public.appointment_status_history (appointment_id);;

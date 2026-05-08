@@ -1,0 +1,770 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+import { z } from "zod";
+
+import {
+  businessRegistrationSchema,
+  businessSettingsSchema,
+  customerSchema,
+  customerUpdateSchema,
+  deleteEntitySchema,
+  appointmentFormSchema,
+  appointmentUpdateSchema,
+  incomeExpenseSchema,
+  incomeExpenseUpdateSchema,
+  loginSchema,
+  moduleToggleSchema,
+  productCreateSchema,
+  productUpdateSchema,
+  profileSchema,
+  serviceSchema,
+  serviceUpdateSchema,
+  staffCreateSchema,
+  staffUpdateSchema,
+  systemBusinessUpdateSchema,
+} from "@/lib/schemas";
+import {
+  createServerSupabaseClient,
+  createSupabaseAdminClient,
+} from "@/lib/supabase/server";
+import { requireSuperAdminContext, requireTenantContext, requireUserContext } from "@/lib/app-data";
+
+function formObject(formData: FormData) {
+  return Object.fromEntries(formData.entries());
+}
+
+function formString(formData: FormData, key: string) {
+  const value = formData.get(key);
+  return typeof value === "string" ? value : "";
+}
+
+function assertUuid(value: string, label: string) {
+  return z.string().uuid(`${label} geçersiz.`).parse(value);
+}
+
+function assertBusinessScope(formData: FormData, expectedBusinessId: string) {
+  const businessId = assertUuid(formString(formData, "businessId"), "İşletme");
+
+  if (businessId !== expectedBusinessId) {
+    redirect("/app?error=yetkisiz-isletme");
+  }
+}
+
+function splitName(fullName: string) {
+  const parts = fullName.trim().split(/\s+/);
+  const firstName = parts.shift() ?? fullName;
+  const lastName = parts.join(" ") || "Yetkili";
+  return { firstName, lastName };
+}
+
+export async function loginAction(formData: FormData) {
+  const input = loginSchema.parse(formObject(formData));
+  const supabase = await createServerSupabaseClient();
+  const { error } = await supabase.auth.signInWithPassword(input);
+
+  if (error) {
+    redirect(`/login?error=${encodeURIComponent("Giriş bilgileri hatalı.")}`);
+  }
+
+  redirect("/app");
+}
+
+export async function registerBusinessAction(formData: FormData) {
+  const input = businessRegistrationSchema.parse(formObject(formData));
+  const admin = createSupabaseAdminClient();
+  const { firstName, lastName } = splitName(input.ownerName);
+
+  const { data: userData, error: userError } =
+    await admin.auth.admin.createUser({
+      email: input.email,
+      password: input.password,
+      email_confirm: true,
+      phone: input.phone,
+      user_metadata: {
+        first_name: firstName,
+        last_name: lastName,
+        phone: input.phone,
+        onboarding: "business_owner",
+      },
+    });
+
+  if (userError || !userData.user) {
+    redirect(
+      `/register?error=${encodeURIComponent(userError?.message ?? "Kayıt oluşturulamadı.")}`,
+    );
+  }
+
+  const { error: profileError } = await admin.rpc("rpc_upsert_profile", {
+    profile_id: userData.user.id,
+    profile_first_name: firstName,
+    profile_last_name: lastName,
+    profile_email: input.email,
+    profile_phone: input.phone,
+    profile_avatar_url: null,
+    profile_theme: "system",
+    profile_must_change_password: false,
+  });
+
+  if (profileError) {
+    redirect(`/register?error=${encodeURIComponent(profileError.message)}`);
+  }
+
+  const { error: rpcError } = await admin.rpc(
+    "rpc_create_business_with_owner",
+    {
+      owner_profile_id: userData.user.id,
+      business_name: input.businessName,
+      business_email: input.email,
+      business_phone: input.phone,
+      selected_plan: input.plan,
+      selected_slot_minutes: input.slotMinutes,
+    },
+  );
+
+  if (rpcError) {
+    redirect(`/register?error=${encodeURIComponent(rpcError.message)}`);
+  }
+
+  revalidatePath("/app");
+
+  const supabase = await createServerSupabaseClient();
+  await supabase.auth.signInWithPassword({
+    email: input.email,
+    password: input.password,
+  });
+
+  redirect("/app");
+}
+
+export async function superAdminCreateBusinessAction(formData: FormData) {
+  await requireSuperAdminContext();
+  const input = businessRegistrationSchema.parse(formObject(formData));
+  const admin = createSupabaseAdminClient();
+  const { firstName, lastName } = splitName(input.ownerName);
+
+  const { data: userData, error: userError } =
+    await admin.auth.admin.createUser({
+      email: input.email,
+      password: input.password,
+      email_confirm: true,
+      phone: input.phone,
+      user_metadata: {
+        first_name: firstName,
+        last_name: lastName,
+        phone: input.phone,
+        onboarding: "business_owner",
+      },
+    });
+
+  if (userError || !userData.user) {
+    redirect(
+      `/app/super-admin?error=${encodeURIComponent(userError?.message ?? "İşletme admini oluşturulamadı.")}`,
+    );
+  }
+
+  const { error: profileError } = await admin.rpc("rpc_upsert_profile", {
+    profile_id: userData.user.id,
+    profile_first_name: firstName,
+    profile_last_name: lastName,
+    profile_email: input.email,
+    profile_phone: input.phone,
+    profile_avatar_url: null,
+    profile_theme: "system",
+    profile_must_change_password: true,
+  });
+
+  if (profileError) {
+    redirect(`/app/super-admin?error=${encodeURIComponent(profileError.message)}`);
+  }
+
+  const { error: rpcError } = await admin.rpc(
+    "rpc_create_business_with_owner",
+    {
+      owner_profile_id: userData.user.id,
+      business_name: input.businessName,
+      business_email: input.email,
+      business_phone: input.phone,
+      selected_plan: input.plan,
+      selected_slot_minutes: input.slotMinutes,
+    },
+  );
+
+  if (rpcError) {
+    redirect(`/app/super-admin?error=${encodeURIComponent(rpcError.message)}`);
+  }
+
+  revalidatePath("/app");
+  revalidatePath("/app/super-admin");
+  redirect("/app/super-admin");
+}
+
+export async function superAdminUpdateBusinessAction(formData: FormData) {
+  await requireSuperAdminContext();
+  const input = systemBusinessUpdateSchema.parse(formObject(formData));
+  const admin = createSupabaseAdminClient();
+  const { error } = await admin.rpc("rpc_super_admin_update_business", {
+    target_business_id: input.businessId,
+    business_name: input.name,
+    business_email: input.email || null,
+    business_phone: input.phone || null,
+    selected_plan: input.plan,
+    selected_slot_minutes: input.slotMinutes,
+    target_is_active: input.isActive,
+  });
+
+  if (error) {
+    redirect(`/app/super-admin?error=${encodeURIComponent(error.message)}`);
+  }
+
+  revalidatePath("/app");
+  revalidatePath("/app/super-admin");
+  redirect("/app/super-admin");
+}
+
+export async function superAdminDeleteBusinessAction(formData: FormData) {
+  await requireSuperAdminContext();
+  const input = deleteEntitySchema.parse({
+    id: formString(formData, "businessId"),
+  });
+  const admin = createSupabaseAdminClient();
+  const { error } = await admin.rpc("rpc_super_admin_delete_business", {
+    target_business_id: input.id,
+  });
+
+  if (error) {
+    redirect(`/app/super-admin?error=${encodeURIComponent(error.message)}`);
+  }
+
+  revalidatePath("/app");
+  revalidatePath("/app/super-admin");
+  redirect("/app/super-admin");
+}
+
+export async function createCustomerAction(formData: FormData) {
+  const { membership } = await requireTenantContext();
+  assertBusinessScope(formData, membership.businessId);
+  const branchId = assertUuid(formString(formData, "branchId"), "Şube");
+  const input = customerSchema.parse(formObject(formData));
+  const admin = createSupabaseAdminClient();
+  const { error } = await admin.rpc("rpc_create_customer", {
+    target_business_id: membership.businessId,
+    target_branch_id: branchId,
+    customer_first_name: input.firstName,
+    customer_last_name: input.lastName,
+    customer_phone: input.phone,
+    customer_email: input.email ?? "",
+    customer_notes: input.notes ?? "",
+    customer_kvkk_consent: input.kvkkConsent,
+    customer_whatsapp_consent: input.whatsappConsent,
+  });
+
+  if (error) {
+    redirect(`/app/customers?error=${encodeURIComponent(error.message)}`);
+  }
+
+  revalidatePath("/app/customers");
+  redirect("/app/customers");
+}
+
+export async function updateCustomerAction(formData: FormData) {
+  const { membership } = await requireTenantContext();
+  assertBusinessScope(formData, membership.businessId);
+  const input = customerUpdateSchema.parse(formObject(formData));
+  const admin = createSupabaseAdminClient();
+  const { error } = await admin.rpc("rpc_update_customer", {
+    target_business_id: membership.businessId,
+    target_customer_id: input.customerId,
+    target_branch_id: input.branchId,
+    customer_first_name: input.firstName,
+    customer_last_name: input.lastName,
+    customer_phone: input.phone,
+    customer_email: input.email ?? "",
+    customer_notes: input.notes ?? "",
+    customer_kvkk_consent: input.kvkkConsent,
+    customer_whatsapp_consent: input.whatsappConsent,
+  });
+
+  if (error) {
+    redirect(`/app/customers?error=${encodeURIComponent(error.message)}`);
+  }
+
+  revalidatePath("/app/customers");
+  redirect("/app/customers");
+}
+
+export async function deleteCustomerAction(formData: FormData) {
+  const { membership } = await requireTenantContext();
+  assertBusinessScope(formData, membership.businessId);
+  const input = deleteEntitySchema.parse({ id: formString(formData, "customerId") });
+  const admin = createSupabaseAdminClient();
+  const { error } = await admin.rpc("rpc_delete_customer", {
+    target_business_id: membership.businessId,
+    target_customer_id: input.id,
+  });
+
+  if (error) {
+    redirect(`/app/customers?error=${encodeURIComponent(error.message)}`);
+  }
+
+  revalidatePath("/app/customers");
+  redirect("/app/customers");
+}
+
+export async function createServiceAction(formData: FormData) {
+  const { membership } = await requireTenantContext();
+  assertBusinessScope(formData, membership.businessId);
+  const input = serviceSchema.parse(formObject(formData));
+  const admin = createSupabaseAdminClient();
+  const { error } = await admin.rpc("rpc_create_service", {
+    target_business_id: membership.businessId,
+    service_name: input.name,
+    service_category: input.category,
+    service_duration_minutes: input.durationMinutes,
+    service_default_price_cents: input.defaultPriceCents,
+    service_is_active: input.isActive,
+  });
+
+  if (error) {
+    redirect(`/app/services?error=${encodeURIComponent(error.message)}`);
+  }
+
+  revalidatePath("/app/services");
+  redirect("/app/services");
+}
+
+export async function updateServiceAction(formData: FormData) {
+  const { membership } = await requireTenantContext();
+  assertBusinessScope(formData, membership.businessId);
+  const input = serviceUpdateSchema.parse(formObject(formData));
+  const admin = createSupabaseAdminClient();
+  const { error } = await admin.rpc("rpc_update_service", {
+    target_business_id: membership.businessId,
+    target_service_id: input.serviceId,
+    service_name: input.name,
+    service_category: input.category,
+    service_duration_minutes: input.durationMinutes,
+    service_default_price_cents: input.defaultPriceCents,
+    service_is_active: input.isActive,
+  });
+
+  if (error) {
+    redirect(`/app/services?error=${encodeURIComponent(error.message)}`);
+  }
+
+  revalidatePath("/app/services");
+  redirect("/app/services");
+}
+
+export async function deleteServiceAction(formData: FormData) {
+  const { membership } = await requireTenantContext();
+  assertBusinessScope(formData, membership.businessId);
+  const input = deleteEntitySchema.parse({ id: formString(formData, "serviceId") });
+  const admin = createSupabaseAdminClient();
+  const { error } = await admin.rpc("rpc_delete_service", {
+    target_business_id: membership.businessId,
+    target_service_id: input.id,
+  });
+
+  if (error) {
+    redirect(`/app/services?error=${encodeURIComponent(error.message)}`);
+  }
+
+  revalidatePath("/app/services");
+  redirect("/app/services");
+}
+
+export async function createStaffAction(formData: FormData) {
+  const { membership } = await requireTenantContext();
+  assertBusinessScope(formData, membership.businessId);
+  const input = staffCreateSchema.parse(formObject(formData));
+  const admin = createSupabaseAdminClient();
+  const { data: userData, error: userError } =
+    await admin.auth.admin.createUser({
+      email: input.email,
+      password: input.temporaryPassword,
+      email_confirm: true,
+      phone: input.phone,
+      user_metadata: {
+        first_name: input.firstName,
+        last_name: input.lastName,
+        phone: input.phone,
+        force_password_change: input.forcePasswordChange,
+        onboarding: "staff",
+      },
+    });
+
+  if (userError || !userData.user) {
+    redirect(
+      `/app/staff?error=${encodeURIComponent(userError?.message ?? "Personel oluşturulamadı.")}`,
+    );
+  }
+
+  const { error: profileError } = await admin.rpc("rpc_upsert_profile", {
+    profile_id: userData.user.id,
+    profile_first_name: input.firstName,
+    profile_last_name: input.lastName,
+    profile_email: input.email,
+    profile_phone: input.phone,
+    profile_avatar_url: null,
+    profile_theme: "system",
+    profile_must_change_password: input.forcePasswordChange,
+  });
+
+  if (profileError) {
+    redirect(`/app/staff?error=${encodeURIComponent(profileError.message)}`);
+  }
+
+  const { error: rpcError } = await admin.rpc("rpc_create_staff_member", {
+    target_business_id: membership.businessId,
+    target_branch_id: input.branchId,
+    staff_profile_id: userData.user.id,
+    staff_role: input.role,
+  });
+
+  if (rpcError) {
+    redirect(`/app/staff?error=${encodeURIComponent(rpcError.message)}`);
+  }
+
+  revalidatePath("/app/staff");
+  redirect("/app/staff");
+}
+
+export async function updateStaffAction(formData: FormData) {
+  const { membership } = await requireTenantContext();
+  assertBusinessScope(formData, membership.businessId);
+  const input = staffUpdateSchema.parse(formObject(formData));
+  const admin = createSupabaseAdminClient();
+  const { error: authError } = await admin.auth.admin.updateUserById(
+    input.profileId,
+    {
+      email: input.email,
+      phone: input.phone,
+      user_metadata: {
+        first_name: input.firstName,
+        last_name: input.lastName,
+        phone: input.phone,
+      },
+    },
+  );
+
+  if (authError) {
+    redirect(`/app/staff?error=${encodeURIComponent(authError.message)}`);
+  }
+
+  const { error: profileError } = await admin.rpc("rpc_upsert_profile", {
+    profile_id: input.profileId,
+    profile_first_name: input.firstName,
+    profile_last_name: input.lastName,
+    profile_email: input.email,
+    profile_phone: input.phone,
+    profile_avatar_url: null,
+    profile_theme: "system",
+    profile_must_change_password: false,
+  });
+
+  if (profileError) {
+    redirect(`/app/staff?error=${encodeURIComponent(profileError.message)}`);
+  }
+
+  const { error } = await admin.rpc("rpc_update_staff_member", {
+    target_business_id: membership.businessId,
+    target_member_id: input.memberId,
+    target_branch_id: input.branchId,
+    staff_role: input.role,
+  });
+
+  if (error) {
+    redirect(`/app/staff?error=${encodeURIComponent(error.message)}`);
+  }
+
+  revalidatePath("/app/staff");
+  redirect("/app/staff");
+}
+
+export async function deleteStaffAction(formData: FormData) {
+  const { membership } = await requireTenantContext();
+  assertBusinessScope(formData, membership.businessId);
+  const input = deleteEntitySchema.parse({ id: formString(formData, "memberId") });
+  const admin = createSupabaseAdminClient();
+  const { error } = await admin.rpc("rpc_delete_staff_member", {
+    target_business_id: membership.businessId,
+    target_member_id: input.id,
+  });
+
+  if (error) {
+    redirect(`/app/staff?error=${encodeURIComponent(error.message)}`);
+  }
+
+  revalidatePath("/app/staff");
+  redirect("/app/staff");
+}
+
+export async function createProductAction(formData: FormData) {
+  const { membership } = await requireTenantContext();
+  assertBusinessScope(formData, membership.businessId);
+  const input = productCreateSchema.parse(formObject(formData));
+  const admin = createSupabaseAdminClient();
+  const { error } = await admin.rpc("rpc_create_product_with_stock", {
+    target_business_id: membership.businessId,
+    target_branch_id: input.branchId,
+    product_name: input.name,
+    product_unit: input.unit,
+    product_critical_stock: input.criticalStock,
+    product_sale_price_cents: input.salePriceCents,
+    movement_quantity: input.openingQuantity,
+    movement_reason: input.reason,
+  });
+
+  if (error) {
+    redirect(`/app/stock?error=${encodeURIComponent(error.message)}`);
+  }
+
+  revalidatePath("/app/stock");
+  redirect("/app/stock");
+}
+
+export async function updateProductAction(formData: FormData) {
+  const { membership } = await requireTenantContext();
+  assertBusinessScope(formData, membership.businessId);
+  const input = productUpdateSchema.parse(formObject(formData));
+  const admin = createSupabaseAdminClient();
+  const { error } = await admin.rpc("rpc_update_product", {
+    target_business_id: membership.businessId,
+    target_product_id: input.productId,
+    product_name: input.name,
+    product_unit: input.unit,
+    product_critical_stock: input.criticalStock,
+    product_sale_price_cents: input.salePriceCents,
+  });
+
+  if (error) {
+    redirect(`/app/stock?error=${encodeURIComponent(error.message)}`);
+  }
+
+  revalidatePath("/app/stock");
+  redirect("/app/stock");
+}
+
+export async function deleteProductAction(formData: FormData) {
+  const { membership } = await requireTenantContext();
+  assertBusinessScope(formData, membership.businessId);
+  const input = deleteEntitySchema.parse({ id: formString(formData, "productId") });
+  const admin = createSupabaseAdminClient();
+  const { error } = await admin.rpc("rpc_delete_product", {
+    target_business_id: membership.businessId,
+    target_product_id: input.id,
+  });
+
+  if (error) {
+    redirect(`/app/stock?error=${encodeURIComponent(error.message)}`);
+  }
+
+  revalidatePath("/app/stock");
+  redirect("/app/stock");
+}
+
+export async function createIncomeExpenseAction(formData: FormData) {
+  const { membership } = await requireTenantContext();
+  assertBusinessScope(formData, membership.businessId);
+  const input = incomeExpenseSchema.parse(formObject(formData));
+  const admin = createSupabaseAdminClient();
+  const { error } = await admin.rpc("rpc_record_income_expense", {
+    target_business_id: membership.businessId,
+    target_branch_id: input.branchId,
+    entry_type: input.type,
+    entry_category: input.category,
+    entry_amount_cents: input.amountCents,
+    entry_source: input.source,
+    entry_occurred_at: input.occurredAt,
+    entry_note: input.note ?? "",
+  });
+
+  if (error) {
+    redirect(`/app/finance?error=${encodeURIComponent(error.message)}`);
+  }
+
+  revalidatePath("/app/finance");
+  redirect("/app/finance");
+}
+
+export async function updateIncomeExpenseAction(formData: FormData) {
+  const { membership } = await requireTenantContext();
+  assertBusinessScope(formData, membership.businessId);
+  const input = incomeExpenseUpdateSchema.parse(formObject(formData));
+  const admin = createSupabaseAdminClient();
+  const { error } = await admin.rpc("rpc_update_income_expense", {
+    target_business_id: membership.businessId,
+    target_entry_id: input.financeId,
+    target_branch_id: input.branchId,
+    entry_type: input.type,
+    entry_category: input.category,
+    entry_amount_cents: input.amountCents,
+    entry_source: input.source,
+    entry_occurred_at: input.occurredAt,
+    entry_note: input.note ?? "",
+  });
+
+  if (error) {
+    redirect(`/app/finance?error=${encodeURIComponent(error.message)}`);
+  }
+
+  revalidatePath("/app/finance");
+  redirect("/app/finance");
+}
+
+export async function deleteIncomeExpenseAction(formData: FormData) {
+  const { membership } = await requireTenantContext();
+  assertBusinessScope(formData, membership.businessId);
+  const input = deleteEntitySchema.parse({ id: formString(formData, "financeId") });
+  const admin = createSupabaseAdminClient();
+  const { error } = await admin.rpc("rpc_delete_income_expense", {
+    target_business_id: membership.businessId,
+    target_entry_id: input.id,
+  });
+
+  if (error) {
+    redirect(`/app/finance?error=${encodeURIComponent(error.message)}`);
+  }
+
+  revalidatePath("/app/finance");
+  redirect("/app/finance");
+}
+
+export async function createAppointmentAction(formData: FormData) {
+  const { user, membership } = await requireTenantContext();
+  assertBusinessScope(formData, membership.businessId);
+  const input = appointmentFormSchema.parse(formObject(formData));
+  const admin = createSupabaseAdminClient();
+  const { error } = await admin.rpc("rpc_create_appointment", {
+    target_business_id: membership.businessId,
+    target_branch_id: input.branchId,
+    target_customer_id: input.customerId,
+    target_staff_member_id: input.staffId,
+    target_service_id: input.serviceId,
+    appointment_starts_at: input.startsAt,
+    appointment_status: input.status,
+    appointment_note: input.note ?? "",
+    actor_profile_id: user.profile.id,
+  });
+
+  if (error) {
+    redirect(`/app/calendar?error=${encodeURIComponent(error.message)}`);
+  }
+
+  revalidatePath("/app");
+  revalidatePath("/app/calendar");
+  revalidatePath("/app/finance");
+  redirect("/app/calendar");
+}
+
+export async function updateAppointmentAction(formData: FormData) {
+  const { user, membership } = await requireTenantContext();
+  assertBusinessScope(formData, membership.businessId);
+  const input = appointmentUpdateSchema.parse(formObject(formData));
+  const admin = createSupabaseAdminClient();
+  const { error } = await admin.rpc("rpc_update_appointment", {
+    target_business_id: membership.businessId,
+    target_appointment_id: input.appointmentId,
+    target_branch_id: input.branchId,
+    target_customer_id: input.customerId,
+    target_staff_member_id: input.staffId,
+    target_service_id: input.serviceId,
+    appointment_starts_at: input.startsAt,
+    appointment_status: input.status,
+    appointment_note: input.note ?? "",
+    actor_profile_id: user.profile.id,
+  });
+
+  if (error) {
+    redirect(`/app/calendar?error=${encodeURIComponent(error.message)}`);
+  }
+
+  revalidatePath("/app");
+  revalidatePath("/app/calendar");
+  revalidatePath("/app/finance");
+  redirect("/app/calendar");
+}
+
+export async function deleteAppointmentAction(formData: FormData) {
+  const { membership } = await requireTenantContext();
+  assertBusinessScope(formData, membership.businessId);
+  const input = deleteEntitySchema.parse({
+    id: formString(formData, "appointmentId"),
+  });
+  const admin = createSupabaseAdminClient();
+  const { error } = await admin.rpc("rpc_delete_appointment", {
+    target_business_id: membership.businessId,
+    target_appointment_id: input.id,
+  });
+
+  if (error) {
+    redirect(`/app/calendar?error=${encodeURIComponent(error.message)}`);
+  }
+
+  revalidatePath("/app");
+  revalidatePath("/app/calendar");
+  revalidatePath("/app/finance");
+  redirect("/app/calendar");
+}
+
+export async function updateBusinessSettingsAction(formData: FormData) {
+  const { membership } = await requireTenantContext();
+  assertBusinessScope(formData, membership.businessId);
+  const input = businessSettingsSchema.parse(formObject(formData));
+  const admin = createSupabaseAdminClient();
+  const { error } = await admin.rpc("rpc_update_business_settings", {
+    target_business_id: membership.businessId,
+    business_name: input.name,
+    selected_slot_minutes: input.slotMinutes,
+  });
+
+  if (error) {
+    redirect(`/app/settings?error=${encodeURIComponent(error.message)}`);
+  }
+
+  revalidatePath("/app/settings");
+}
+
+export async function toggleModuleAction(formData: FormData) {
+  const { membership } = await requireTenantContext();
+  assertBusinessScope(formData, membership.businessId);
+  const input = moduleToggleSchema.parse(formObject(formData));
+  const admin = createSupabaseAdminClient();
+  const { error } = await admin.rpc("rpc_toggle_business_module", {
+    target_business_id: membership.businessId,
+    target_module: input.moduleKey,
+    target_enabled: input.enabled,
+  });
+
+  if (error) {
+    redirect(`/app/settings?error=${encodeURIComponent(error.message)}`);
+  }
+
+  revalidatePath("/app/settings");
+  revalidatePath("/app");
+}
+
+export async function updateProfileAction(formData: FormData) {
+  const { profile } = await requireUserContext();
+  assertUuid(formString(formData, "profileId"), "Profil");
+  const input = profileSchema.parse(formObject(formData));
+  const admin = createSupabaseAdminClient();
+  const { error } = await admin.rpc("rpc_upsert_profile", {
+    profile_id: profile.id,
+    profile_first_name: input.firstName,
+    profile_last_name: input.lastName,
+    profile_email: input.email,
+    profile_phone: input.phone,
+    profile_avatar_url: input.avatarUrl || null,
+    profile_theme: input.theme,
+    profile_must_change_password: false,
+  });
+
+  if (error) {
+    redirect(`/app/profile?error=${encodeURIComponent(error.message)}`);
+  }
+
+  revalidatePath("/app/profile");
+}

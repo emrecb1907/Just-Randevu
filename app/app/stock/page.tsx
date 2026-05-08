@@ -1,0 +1,77 @@
+import Link from "next/link";
+import { Boxes, Pencil, Plus } from "lucide-react";
+import { redirect } from "next/navigation";
+
+import { getTenantDataset, requireTenantContext } from "@/lib/app-data";
+import { formatCurrency } from "@/lib/utils";
+
+export default async function StockPage() {
+  const { membership } = await requireTenantContext();
+  const { stockItems, activeModules } = await getTenantDataset(membership);
+
+  if (!activeModules.includes("stock")) {
+    redirect("/app/settings");
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+        <div>
+          <p className="text-sm font-semibold text-primary">Premium Modül</p>
+          <h1 className="text-2xl font-semibold tracking-normal md:text-3xl">
+            Stok Yönetimi
+          </h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Ürün kartı, açılış stoğu ve düzenleme ayrı akışlarda yapılır.
+          </p>
+        </div>
+        <Link
+          href="/app/stock/new"
+          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-bold text-white shadow-sm"
+        >
+          <Plus size={16} />
+          Yeni ürün
+        </Link>
+      </div>
+      <section className="grid gap-4 md:grid-cols-3">
+        {stockItems.map((item) => {
+          const critical = item.stock <= item.critical;
+          return (
+            <article
+              key={item.id}
+              className="rounded-lg border border-border bg-surface p-4"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <h2 className="font-semibold">{item.name}</h2>
+                  <p className="text-sm text-muted-foreground">{item.unit}</p>
+                </div>
+                <Boxes
+                  className={critical ? "text-accent" : "text-primary"}
+                  size={20}
+                />
+              </div>
+              <p className="mt-5 text-3xl font-semibold">{item.stock}</p>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Kritik: {item.critical} · Değer:{" "}
+                {formatCurrency(item.valueCents)}
+              </p>
+              <Link
+                href={`/app/stock/${item.id}/edit`}
+                className="mt-4 inline-flex min-h-10 items-center justify-center gap-2 rounded-md border border-border bg-background px-3 text-sm font-semibold"
+              >
+                <Pencil size={15} />
+                Düzenle
+              </Link>
+            </article>
+          );
+        })}
+        {stockItems.length === 0 ? (
+          <div className="rounded-lg border border-border bg-surface p-4 text-sm text-muted-foreground">
+            Henüz ürün kaydı yok.
+          </div>
+        ) : null}
+      </section>
+    </div>
+  );
+}
